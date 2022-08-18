@@ -1,0 +1,18 @@
+!SESSION 2022-08-18 19:40:53.416 -----------------------------------------------
+eclipse.buildId=Version 1.10.1
+java.version=11.0.14.1
+java.vendor=Eclipse Adoptium
+BootLoader constants: OS=win32, ARCH=x86_64, WS=win32, NL=en_ZA
+Command-line arguments:  -os win32 -ws win32 -arch x86_64
+
+!ENTRY com.st.stm32cube.ide.mcu.informationcenter 4 4 2022-08-18 19:41:36.627
+!MESSAGE CubeMX plugin appears to be active, Log4j initialization might be too late.
+
+!ENTRY com.st.stm32cube.ide.mcu.informationcenter 1 1 2022-08-18 19:41:36.952
+!MESSAGE Log4j initialized with config file D:\Semester 2\ProjectE_448\Skripsie Workspace\STM32L4\.metadata\.log4j.xml
+
+!ENTRY com.st.stm32cube.ide.mcu.ide 1 1 2022-08-18 19:42:49.774
+!MESSAGE Started RMI Server, listening on port 41337
+
+!ENTRY org.eclipse.cdt.core 1 0 2022-08-18 19:57:41.160
+!MESSAGE Indexed 'river_sense' (25 sources, 84 headers) in 7.41 sec: 6,039 declarations; 37,253 references; 0 unresolved inclusions; 1 syntax errors; 2 unresolved names (0.0046%)
