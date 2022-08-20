@@ -1,0 +1,33 @@
+/*
+ * sim7070g.h
+ *
+ *  Created on: Aug 20, 2022
+ *      Author: benjr
+ */
+
+#ifndef INC_SIM7070G_H_
+#define INC_SIM7070G_H_
+
+
+
+#endif /* INC_SIM7070G_H_ */
+
+
+// Defines begin
+
+
+
+// Defines end
+
+
+
+
+
+// Prototypes begin
+void serialHandler(uint8_t charReceived);
+
+
+// Prototypes end
+
+
+

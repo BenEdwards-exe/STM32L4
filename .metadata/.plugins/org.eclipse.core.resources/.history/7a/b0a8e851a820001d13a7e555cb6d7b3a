@@ -1,0 +1,93 @@
+/*
+ * sim7070g.c
+ *
+ *  Created on: Aug 20, 2022
+ *      Author: benjr
+ */
+
+#include "main.h"
+#include "stm32l4xx_hal.h"
+#include <string.h>
+#include <stdio.h>
+#include <sim7070g.h>
+
+// External variables begin
+extern UART_HandleTypeDef huart1;
+
+// External variables end
+
+simStateType simState = SIM_INIT;
+uint8_t shouldTransmit = 1;
+char ATcommand[80];
+uint8_t serialRX_Buffer[250] = {0};
+uint8_t serialRX_BufferIndex = 0;
+uint8_t serialRX_Data;
+uint8_t clearBuffer = 0;
+
+
+
+void simHandler(void) {
+
+	if (simState == SIM_INIT) { // Check communication between SIM and computer
+
+		if (shouldTransmit) {
+			sprintf(ATcommand, "AT+CPSI?\r\n");
+			// Enable transmit command with interrupt
+			HAL_UART_Transmit_IT(&huart1, (uint8_t *) ATcommand, strlen(ATcommand));
+			shouldTransmit = 0;
+			// Enable receive command with interrupt
+			HAL_UART_Receive_IT(&huart1, &serialRX_Data, 1);
+
+		} // end if shouldTransmit
+
+	} // end if SIM_INIT
+
+	else if (simState == SIM_COMMAND_TEST) {
+		sprintf(ATcommand, "AT+CPSI?\r\n");
+		HAL_UART_Transmit_IT(&huart1, (uint8_t *) ATcommand, strlen(ATcommand));
+	}
+
+
+	return;
+}
+
+
+void serialRXHandler(uint8_t charReceived) {
+
+	if (charReceived != 13) { // received is not enter or '+'
+
+		serialRX_Buffer[serialRX_BufferIndex++] = charReceived;
+
+	} else {
+
+		if (simState == SIM_INIT) {
+
+			if (strstr((char *) serialRX_Buffer, "OK")) {
+				simState = SIM_STANDBY;
+				HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
+//				clearBuffer = 1; // uncomment later
+			}
+
+		}
+
+		// AT+CPSI? was called
+		if (strstr((char*) serialRX_Buffer, "\n+CPSI:") && strstr((char*) serialRX_Buffer, "\nOK\n")) {
+			HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
+		}
+
+
+
+
+		if (clearBuffer) { // reset index and clear buffer
+			serialRX_BufferIndex = 0;
+			memset(serialRX_Buffer, 0, sizeof(serialRX_Buffer));
+			clearBuffer = 0;
+		}
+
+
+	}
+
+
+
+	return;
+}

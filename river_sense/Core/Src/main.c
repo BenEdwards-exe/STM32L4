@@ -21,7 +21,9 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <string.h>
+#include <stdio.h>
+#include <sim7070g.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -39,22 +41,72 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-UART_HandleTypeDef huart2;
+UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
+
+// External variables begin
+extern char ATcommand[80];
+extern simStateType simState;
+extern uint8_t serialRX_Data;
+// External variables end
+
+uint8_t ATisOK = 0;
+uint8_t slot = 0;
+uint8_t rx_buffer[100] = {0};
+uint8_t rx_index = 0;
+uint8_t rx_data;
+uint8_t data_received[100] = {0};
+uint8_t data_index = 0;
+
+
+
 
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-static void MX_USART2_UART_Init(void);
+static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
-
+void power_on_blocking(void);
+void power_off_blocking(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+// UART Transmit Callback
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+  /* Prevent unused argument(s) compilation warning */
+  UNUSED(huart);
+}
+
+// UART Receive Callback
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+  if(huart->Instance==USART1)
+  {
+    // if the character received is other than 'enter' ascii13, save the data in buffer
+    if(rx_data!=13)
+    {
+      rx_buffer[rx_index++]=rx_data;
+    }
+
+    data_received[data_index++] = serialRX_Data;
+
+    serialRXHandler(serialRX_Data);
+
+
+    if (data_index > 2) {
+//    	HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
+    }
+
+    // Enabling interrupt receive again
+    HAL_UART_Receive_IT(&huart1, &serialRX_Data, 1); // receive data (one character only)
+  }
+}
 
 /* USER CODE END 0 */
 
@@ -86,8 +138,33 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_USART2_UART_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
+
+
+
+//  while(!ATisOK)
+//    {
+//      sprintf(ATcommand,"AT\r\n");
+//      HAL_UART_Transmit_IT(&huart1,(uint8_t *)ATcommand,strlen(ATcommand));
+//      HAL_UART_Receive_IT(&huart1, rx_buffer, 1);
+//      HAL_Delay(1000);
+//      if(strstr((char *)rx_buffer,"OK"))
+//      {
+//        ATisOK = 1;
+//      }
+//      HAL_Delay(1000);
+//      memset(rx_buffer,0,sizeof(rx_buffer));
+//    }
+
+
+
+  HAL_Delay(200);
+//  sprintf(ATcommand,"AT+CPSI?\r\n");
+//  HAL_UART_Transmit_IT(&huart1,(uint8_t *)ATcommand,strlen(ATcommand));
+//  HAL_UART_Receive_IT(&huart1, &rx_data, 1);
+
+
 
   /* USER CODE END 2 */
 
@@ -95,6 +172,11 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  // Call SIM Module handler
+	  simHandler();
+
+
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -163,37 +245,37 @@ void SystemClock_Config(void)
 }
 
 /**
-  * @brief USART2 Initialization Function
+  * @brief USART1 Initialization Function
   * @param None
   * @retval None
   */
-static void MX_USART2_UART_Init(void)
+static void MX_USART1_UART_Init(void)
 {
 
-  /* USER CODE BEGIN USART2_Init 0 */
+  /* USER CODE BEGIN USART1_Init 0 */
 
-  /* USER CODE END USART2_Init 0 */
+  /* USER CODE END USART1_Init 0 */
 
-  /* USER CODE BEGIN USART2_Init 1 */
+  /* USER CODE BEGIN USART1_Init 1 */
 
-  /* USER CODE END USART2_Init 1 */
-  huart2.Instance = USART2;
-  huart2.Init.BaudRate = 115200;
-  huart2.Init.WordLength = UART_WORDLENGTH_8B;
-  huart2.Init.StopBits = UART_STOPBITS_1;
-  huart2.Init.Parity = UART_PARITY_NONE;
-  huart2.Init.Mode = UART_MODE_TX_RX;
-  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
-  huart2.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
-  huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
-  if (HAL_UART_Init(&huart2) != HAL_OK)
+  /* USER CODE END USART1_Init 1 */
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = 115200;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_TX_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart1.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart1) != HAL_OK)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN USART2_Init 2 */
+  /* USER CODE BEGIN USART1_Init 2 */
 
-  /* USER CODE END USART2_Init 2 */
+  /* USER CODE END USART1_Init 2 */
 
 }
 
@@ -212,7 +294,25 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(PWR_SIM_GPIO_Port, PWR_SIM_Pin, GPIO_PIN_SET);
+
+  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : PWR_SIM_Pin */
+  GPIO_InitStruct.Pin = PWR_SIM_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(PWR_SIM_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : VCP_RX_Pin */
+  GPIO_InitStruct.Pin = VCP_RX_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  GPIO_InitStruct.Alternate = GPIO_AF3_USART2;
+  HAL_GPIO_Init(VCP_RX_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : LD3_Pin */
   GPIO_InitStruct.Pin = LD3_Pin;
@@ -224,6 +324,21 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+void power_on_blocking(void) {
+	HAL_GPIO_WritePin(PWR_SIM_GPIO_Port, PWR_SIM_Pin, GPIO_PIN_SET);
+	HAL_Delay(2000);
+	HAL_GPIO_WritePin(PWR_SIM_GPIO_Port, PWR_SIM_Pin, GPIO_PIN_RESET);
+	HAL_Delay(2000);
+	return;
+}
+
+void power_off_blocking(void) {
+	HAL_GPIO_WritePin(PWR_SIM_GPIO_Port, PWR_SIM_Pin, GPIO_PIN_SET);
+	HAL_Delay(1000);
+	HAL_GPIO_WritePin(PWR_SIM_GPIO_Port, PWR_SIM_Pin, GPIO_PIN_RESET);
+	HAL_Delay(1000);
+}
 
 /* USER CODE END 4 */
 
