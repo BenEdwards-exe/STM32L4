@@ -143,23 +143,23 @@ int main(void)
 
 
 
-//  while(!ATisOK)
-//    {
-//      sprintf(ATcommand,"AT\r\n");
-//      HAL_UART_Transmit_IT(&huart1,(uint8_t *)ATcommand,strlen(ATcommand));
-//      HAL_UART_Receive_IT(&huart1, rx_buffer, 1);
-//      HAL_Delay(1000);
-//      if(strstr((char *)rx_buffer,"OK"))
-//      {
-//        ATisOK = 1;
-//      }
-//      HAL_Delay(1000);
-//      memset(rx_buffer,0,sizeof(rx_buffer));
-//    }
+  while(!ATisOK)
+    {
+      sprintf(ATcommand,"AT\r\n");
+      HAL_UART_Transmit_IT(&huart1,(uint8_t *)ATcommand,strlen(ATcommand));
+      HAL_UART_Receive_IT(&huart1, rx_buffer, 1);
+      HAL_Delay(1000);
+      if(strstr((char *)rx_buffer,"OK"))
+      {
+        ATisOK = 1;
+      }
+      HAL_Delay(1000);
+      memset(rx_buffer,0,sizeof(rx_buffer));
+    }
 
 
 
-//  HAL_Delay(200);
+  HAL_Delay(1000);
 //  sprintf(ATcommand,"AT+CPSI?\r\n");
 //  HAL_UART_Transmit_IT(&huart1,(uint8_t *)ATcommand,strlen(ATcommand));
 //  HAL_UART_Receive_IT(&huart1, &rx_data, 1);

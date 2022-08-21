@@ -2493,3 +2493,34 @@
 2022-08-20 16:44:27,155 [INFO] ProjectBuilder:2790 - Time for Copy CMSIS : 0mS.
 2022-08-20 16:44:27,158 [INFO] ProjectBuilder:2790 - Time for Copy CMSIS : 0mS.
 2022-08-20 19:05:27,650 [ERROR] ConfigurationRetriever:139 - IOException on connection: Read timed out
+2022-08-20 21:12:31,374 [INFO] UtilMem:74 - End SaveConfig() Used Memory: 500953856 Bytes (791674880)
+2022-08-20 21:12:31,692 [INFO] BlockDiagram:2753 - set Specific Code input for plugin: NVIC
+2022-08-20 21:12:31,692 [INFO] BlockDiagram:2753 - set Specific Code input for plugin: USART
+2022-08-20 21:12:31,692 [INFO] BlockDiagram:2753 - set Specific Code input for plugin: SYS
+2022-08-20 21:12:31,693 [INFO] BlockDiagram:2753 - set Specific Code input for plugin: GPIO
+2022-08-20 21:12:31,693 [INFO] BlockDiagram:2753 - set Specific Code input for plugin: RCC
+2022-08-20 21:12:31,694 [INFO] CodeGenerator:690 - code generatio: config db path: C:\ST\STM32CubeIDE_1.10.1\STM32CubeIDE\plugins\com.st.stm32cube.common.mx_6.6.1.202207061420\\db\
+2022-08-20 21:12:32,018 [INFO] CodeEngine:245 - oldGeneratedFile, D:\Semester 2\ProjectE_448\Skripsie Workspace\STM32L4\river_sense\MXTmpFiles\license.tmp_save
+2022-08-20 21:12:32,111 [INFO] CodeEngine:269 - Generated code: D:\Semester 2\ProjectE_448\Skripsie Workspace\STM32L4\river_sense\MXTmpFiles\license.tmp
+2022-08-20 21:12:32,235 [INFO] CodeEngine:245 - oldGeneratedFile, D:\Semester 2\ProjectE_448\Skripsie Workspace\STM32L4\river_sense\MXTmpFiles\gpio.tmp_save
+2022-08-20 21:12:32,345 [INFO] CodeEngine:269 - Generated code: D:\Semester 2\ProjectE_448\Skripsie Workspace\STM32L4\river_sense\MXTmpFiles\gpio.tmp
+2022-08-20 21:12:32,812 [INFO] CodeEngine:245 - oldGeneratedFile, D:\Semester 2\ProjectE_448\Skripsie Workspace\STM32L4\river_sense\Core\Src\stm32l4xx_it.c_save
+2022-08-20 21:12:32,930 [INFO] CodeEngine:269 - Generated code: D:\Semester 2\ProjectE_448\Skripsie Workspace\STM32L4\river_sense\Core\Src\stm32l4xx_it.c
+2022-08-20 21:12:32,949 [INFO] CodeEngine:245 - oldGeneratedFile, D:\Semester 2\ProjectE_448\Skripsie Workspace\STM32L4\river_sense\Core\Inc\stm32l4xx_it.h_save
+2022-08-20 21:12:33,067 [INFO] CodeEngine:269 - Generated code: D:\Semester 2\ProjectE_448\Skripsie Workspace\STM32L4\river_sense\Core\Inc\stm32l4xx_it.h
+2022-08-20 21:12:33,139 [INFO] CodeEngine:245 - oldGeneratedFile, D:\Semester 2\ProjectE_448\Skripsie Workspace\STM32L4\river_sense\Core\Src\stm32l4xx_hal_msp.c_save
+2022-08-20 21:12:33,268 [INFO] CodeEngine:269 - Generated code: D:\Semester 2\ProjectE_448\Skripsie Workspace\STM32L4\river_sense\Core\Src\stm32l4xx_hal_msp.c
+2022-08-20 21:12:33,280 [INFO] CodeEngine:245 - oldGeneratedFile, D:\Semester 2\ProjectE_448\Skripsie Workspace\STM32L4\river_sense\MXTmpFiles\system.tmp_save
+2022-08-20 21:12:33,362 [INFO] CodeEngine:269 - Generated code: D:\Semester 2\ProjectE_448\Skripsie Workspace\STM32L4\river_sense\MXTmpFiles\system.tmp
+2022-08-20 21:12:33,420 [INFO] CodeEngine:245 - oldGeneratedFile, D:\Semester 2\ProjectE_448\Skripsie Workspace\STM32L4\river_sense\Core\Inc\stm32l4xx_hal_conf.h_save
+2022-08-20 21:12:33,539 [INFO] CodeEngine:269 - Generated code: D:\Semester 2\ProjectE_448\Skripsie Workspace\STM32L4\river_sense\Core\Inc\stm32l4xx_hal_conf.h
+2022-08-20 21:12:33,644 [INFO] CodeEngine:245 - oldGeneratedFile, D:\Semester 2\ProjectE_448\Skripsie Workspace\STM32L4\river_sense\Core\Inc\main.h_save
+2022-08-20 21:12:33,747 [INFO] CodeEngine:269 - Generated code: D:\Semester 2\ProjectE_448\Skripsie Workspace\STM32L4\river_sense\Core\Inc\main.h
+2022-08-20 21:12:33,770 [INFO] CodeEngine:245 - oldGeneratedFile, D:\Semester 2\ProjectE_448\Skripsie Workspace\STM32L4\river_sense\Core\Src\main.c_save
+2022-08-20 21:12:33,940 [INFO] CodeEngine:269 - Generated code: D:\Semester 2\ProjectE_448\Skripsie Workspace\STM32L4\river_sense\Core\Src\main.c
+2022-08-20 21:12:36,152 [INFO] ProjectBuilder:2919 - Time for Copy HAL[1] : 1471mS.
+2022-08-20 21:12:36,161 [INFO] ProjectBuilder:4117 - Project Generator version: 3.17.1
+2022-08-20 21:12:36,474 [INFO] ConfigFileManager:1394 - The Die is : DIE435
+2022-08-20 21:12:38,798 [INFO] ProjectBuilder:4285 - Time for Generating toolchain IDE Files: 2637mS.
+2022-08-20 21:12:38,799 [INFO] ProjectBuilder:2790 - Time for Copy CMSIS : 0mS.
+2022-08-20 21:12:38,803 [INFO] ProjectBuilder:2790 - Time for Copy CMSIS : 1mS.

@@ -26,7 +26,7 @@ uint8_t clearBuffer = 0;
 
 
 // PDN Auto-activation variables
-#define PDN_LENGTH 7
+#define PDN_LENGTH 6
 char pdnCommands[PDN_LENGTH][20] = {
 		"AT+CPIN?\r\n",
 		"AT+CSQ\r\n",
@@ -34,14 +34,11 @@ char pdnCommands[PDN_LENGTH][20] = {
 		"AT+COPS?\r\n",
 		"AT+CGNAPN\r\n",
 //		"AT+CNACT=0,0\r\n", // deactivate network before activation; FIX LATER
-		"AT+CNACT=0,1\r\n", // activate network
+//		"AT+CNACT=0,1\r\n", // activate network
 		"AT+CNACT?\r\n"
 };
 uint8_t pdnCommandIndex = 0;
 uint8_t pdnFeedback[PDN_LENGTH][150] = {0};
-
-
-uint8_t n = 0;
 
 
 // HTTP Post variables
@@ -57,7 +54,7 @@ char httpPostCommands[HTTP_POST_LENGTH][80] = {
 		"AT+SHAHEAD=\"Cache-control\",\"no-cache\"\r\n", // magic
 		"AT+SHAHEAD=\"Connection\",\"keep-alive\"\r\n", // magic
 		"AT+SHAHEAD=\"Accept\",\"*/*\"\r\n", // magic
-		"AT+SHREQ=\"/update?api_key=1EC4ZVYTHEJUAAIO&field3=8\",3\r\n", // set request type and append header
+		"AT+SHREQ=\"/update?api_key=1EC4ZVYTHEJUAAIO&field2=5\",3\r\n", // set request type and append header
 //		"AT+SHREAD=0,2", // Read http result (second variable dependent on result length)
 		"AT+SHDISC\r\n" // Disconnect http connect
 };
@@ -119,7 +116,7 @@ void serialRXHandler(uint8_t charReceived) {
 	if (strstr((char*) serialRX_Buffer, "\nOK\r\n")) {
 
 		if (simState == SIM_INIT) {
-			simState = SIM_PDN_ACTIVATION;
+			simState = SIM_HTTP_POST;
 			clearBuffer = 1;
 			shouldTransmit = 1;
 
@@ -139,13 +136,7 @@ void serialRXHandler(uint8_t charReceived) {
 		} else if (simState == SIM_HTTP_POST) {
 			strncpy((char*)httpPostFeedback[httpPostCommandIndex-1], (char*)serialRX_Buffer, sizeof(httpPostFeedback[0]));
 			if (httpPostCommandIndex + 1 > HTTP_POST_LENGTH) { // Command sequence complete
-				simState = SIM_HTTP_POST;
-				httpPostCommandIndex = 0;
-				++n;
-				HAL_Delay(10000);
-				if (n>5) {
-					simState = SIM_STANDBY;
-				}
+				simState = SIM_STANDBY;
 			}
 			clearBuffer = 1;
 			shouldTransmit = 1;
