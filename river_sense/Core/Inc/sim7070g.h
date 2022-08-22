@@ -16,13 +16,14 @@
 
 
 typedef enum {
+	SIM_INIT,
+	SIM_UE_CHECK,
+	SIM_PDN_ACTIVATION,
+	SIM_HTTP_POST,
 	SIM_ERROR,
 	SIM_STANDBY,
-	SIM_INIT,
 	SIM_CONNECT_SERVICE,
 	SIM_CONNECT_NBIOT,
-	SIM_HTTP_POST,
-	SIM_PDN_ACTIVATION,
 	SIM_COMMAND_TEST
 }simStateType;
 
@@ -34,9 +35,11 @@ typedef enum {
 
 
 // Prototypes begin
-void simHandler(void);
-void simPDN_Activation(void);
-void serialRXHandler(uint8_t charReceived);
+void SIM_Handler(void);
+void SIM_Init_Handler(void);
+void SIM_UE_Check_Handler(void);
+void SIM_PDN_Activation(void);
+void SIM_serialRX_Handler(uint8_t charReceived);
 
 
 // Prototypes end

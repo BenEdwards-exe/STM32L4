@@ -59,8 +59,6 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define MCO_Pin GPIO_PIN_0
 #define MCO_GPIO_Port GPIOA
-#define PWR_SIM_Pin GPIO_PIN_2
-#define PWR_SIM_GPIO_Port GPIOA
 #define UART_TX_SIM_Pin GPIO_PIN_9
 #define UART_TX_SIM_GPIO_Port GPIOA
 #define UART_RX_SIM_Pin GPIO_PIN_10
