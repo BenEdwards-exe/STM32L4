@@ -440,7 +440,7 @@ void SIM_PDN_Activation(void) {
 
 			case 4:
 				// Activate network, Activate 0th PDP.
-				sprintf(ATcommand, "AT+CNACT=0,1\r\n");
+				sprintf(ATcommand, "AT+CNACT=0,0\r\n");
 				HAL_UART_Transmit_IT(&huart1, (uint8_t *) ATcommand, strlen(ATcommand));
 				break;
 

@@ -405,11 +405,8 @@ void SIM_PDN_Activation(void) {
 	// ---------------------------- TX ------------------------------- //
 	// 0: AT+CGATT? - Check PS service. 1 indicates PS has attached.
 	// 1: AT+COPS? - Network information, operator and network
-	// 2: AT+CGNAPN - Query APN delivered by the network
-	// 3: AT+CNACT? - Get local IP
-	// 4: AT+CNACT=0,1 - Activate 0th PDP
 
-	uint8_t maxCommand = 4;
+	uint8_t maxCommand = 1;
 
 	if ((shouldTransmit) && (commandIndex <= maxCommand)) {
 		// Next command should be transmitted
@@ -425,25 +422,6 @@ void SIM_PDN_Activation(void) {
 				sprintf(ATcommand, "AT+COPS?\r\n");
 				HAL_UART_Transmit_IT(&huart1, (uint8_t *) ATcommand, strlen(ATcommand));
 				break;
-
-			case 2:
-				// Network APN
-				sprintf(ATcommand, "AT+CGNAPN\r\n");
-				HAL_UART_Transmit_IT(&huart1, (uint8_t *) ATcommand, strlen(ATcommand));
-				break;
-
-			case 3:
-				// Local IP (to check if need to activate network)
-				sprintf(ATcommand, "AT+CNACT?\r\n");
-				HAL_UART_Transmit_IT(&huart1, (uint8_t *) ATcommand, strlen(ATcommand));
-				break;
-
-			case 4:
-				// Activate network, Activate 0th PDP.
-				sprintf(ATcommand, "AT+CNACT=0,1\r\n");
-				HAL_UART_Transmit_IT(&huart1, (uint8_t *) ATcommand, strlen(ATcommand));
-				break;
-
 
 			default:
 				break;
@@ -470,52 +448,11 @@ void SIM_PDN_Activation(void) {
 
 			case 1:
 				// +COPS?\r\r\n+COPS: 1,0,\"VodaCom-SA\",9\r\n\r\nOK\r\n - 9: NB-IoT Network
-				if (strstr((char*) serialRX_Buffer, "+COPS?\r\r\n+COPS: 1,0,\"VodaCom-SA\",9\r\n\r\nOK\r\n") ) {
+				if (strstr((char*) serialRX_Buffer, "+COPS?\r\r\n+COPS: 1,0,\"VodaCom-SA\",9\r\n\r\nOK\r\n")) {
 					isIncrementCommand = 1;
 				}
 
 				// TODO: If network information is wrong
-				break;
-
-			case 2:
-				// +CGNAPN: 1,\"internet\"\r\n\r\nOK\r\n
-				if ( strstr((char*) serialRX_Buffer, "+CGNAPN: 1,\"internet\"\r\n\r\nOK\r\n") ) {
-					isIncrementCommand = 1;
-				}
-
-			case 3:
-				// +CNACT: 0,0,\"0.0.0.0\" - Not activated
-				// \r\nOK\r\n - End of response
-				if ( (strstr((char*) serialRX_Buffer, "+CNACT: 0,0,\"0.0.0.0\"")) && (strstr((char*) serialRX_Buffer, "\r\nOK\r\n")) ) {
-					// Set to correct command for activation; Clear buffer; Enable transmit next command
-					commandIndex = 4;
-					clearBuffer = 1;
-					shouldTransmit = 1;
-				}
-				//
-				// Network is already activated
-				// \r\n+CNACT: 0,1, - Activated
-				// \r\nOK\r\n - End of response
-				else if ( (strstr((char*) serialRX_Buffer, "\r\n+CNACT: 0,1,")) && (strstr((char*) serialRX_Buffer, "\r\nOK\r\n"))) {
-					// Network is already activated
-					// Change state; Clear buffer; Enable transmit
-					simState = SIM_HTTP_BUILD;
-					isStateChanged = 1;
-					clearBuffer = 1;
-					shouldTransmit = 1;
-				}
-				break;
-
-			case 4:
-				// +APP PDP: 0,ACTIVE\r\n - Activated
-				if ( strstr((char*) serialRX_Buffer, "+APP PDP: 0,ACTIVE\r\n") ) {
-					// Successful network activation
-					// Change state; Clear buffer; Enable transmit
-					simState = SIM_HTTP_BUILD;
-					isStateChanged = 1;
-					clearBuffer = 1;
-					shouldTransmit = 1;
-				}
 				break;
 
 			default:

@@ -3081,3 +3081,4 @@
 2022-08-22 11:56:42,800 [INFO] ProjectBuilder:4285 - Time for Generating toolchain IDE Files: 3024mS.
 2022-08-22 11:56:42,801 [INFO] ProjectBuilder:2790 - Time for Copy CMSIS : 0mS.
 2022-08-22 11:56:42,805 [INFO] ProjectBuilder:2790 - Time for Copy CMSIS : 0mS.
+2022-08-22 22:04:25,292 [ERROR] ConfigurationRetriever:139 - IOException on connection: Read timed out

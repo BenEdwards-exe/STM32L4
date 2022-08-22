@@ -485,7 +485,7 @@ void SIM_PDN_Activation(void) {
 
 			case 3:
 				// +CNACT: 0,0,\"0.0.0.0\" - Not activated
-				// \r\nOK\r\n - End of response
+				// \r\nOK\r\n - end of response
 				if ( (strstr((char*) serialRX_Buffer, "+CNACT: 0,0,\"0.0.0.0\"")) && (strstr((char*) serialRX_Buffer, "\r\nOK\r\n")) ) {
 					// Set to correct command for activation; Clear buffer; Enable transmit next command
 					commandIndex = 4;
@@ -494,9 +494,7 @@ void SIM_PDN_Activation(void) {
 				}
 				//
 				// Network is already activated
-				// \r\n+CNACT: 0,1, - Activated
-				// \r\nOK\r\n - End of response
-				else if ( (strstr((char*) serialRX_Buffer, "\r\n+CNACT: 0,1,")) && (strstr((char*) serialRX_Buffer, "\r\nOK\r\n"))) {
+				else if ( strstr((char*) serialRX_Buffer, "\r\n+CNACT: 0,1,xxx") ) {
 					// Network is already activated
 					// Change state; Clear buffer; Enable transmit
 					simState = SIM_HTTP_BUILD;
