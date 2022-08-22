@@ -1,5 +1,5 @@
 ../Core/Src/sim7070g.c:74:6:SIM_Handler	8	static
-../Core/Src/sim7070g.c:156:6:SIM_serialRX_Handler	16	static
-../Core/Src/sim7070g.c:254:6:SIM_Init_Handler	16	static
-../Core/Src/sim7070g.c:336:6:SIM_UE_Check_Handler	16	static
-../Core/Src/sim7070g.c:403:6:SIM_PDN_Activation	16	static
+../Core/Src/sim7070g.c:95:6:SIM_serialRX_Handler	16	static
+../Core/Src/sim7070g.c:120:6:SIM_Init_Handler	16	static
+../Core/Src/sim7070g.c:202:6:SIM_UE_Check_Handler	16	static
+../Core/Src/sim7070g.c:269:6:SIM_PDN_Activation	16	static

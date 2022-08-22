@@ -88,6 +88,67 @@ void SIM_Handler(void) {
 	}
 
 
+
+//	if (simState == SIM_INIT) { // Check communication between SIM and computer
+//
+//		if (shouldTransmit) {
+//			sprintf(ATcommand, "AT\r\n");
+//			// Transmit with interrupt
+//			HAL_UART_Transmit_IT(&huart1, (uint8_t *) ATcommand, strlen(ATcommand));
+//			// Enable receive command with interrupt
+//			HAL_UART_Receive_IT(&huart1, &serialRX_Data, 1);
+//
+//			shouldTransmit = 0;
+//
+//		} // end if shouldTransmit
+//
+//	} // end if SIM_INIT
+//
+//	else if (simState == SIM_UE_CHECK) {
+//		// Check UE Info
+//		// If not connected to NB-IoT; NB-IoT setup should commence
+//
+//		if (shouldTransmit) {
+//			sprintf(ATcommand, "AT+CPSI?\r\n");
+//			// Transmit
+//			HAL_UART_Transmit_IT(&huart1, (uint8_t *) ATcommand, strlen(ATcommand));
+//			// Stop future transmissions until needed again
+//			shouldTransmit = 0;
+//
+//		}
+//
+//	}
+//
+//	else if (simState == SIM_COMMAND_TEST) {
+//		if (shouldTransmit) {
+//			sprintf(ATcommand, "AT+CFUN=0?\r\n");
+//			HAL_UART_Transmit_IT(&huart1, (uint8_t *) ATcommand, strlen(ATcommand));
+//			shouldTransmit = 0;
+//		} // end if shouldTransmit
+//
+//	} // end if SIM_COMMAND_TEST
+//
+//	else if (simState == SIM_PDN_ACTIVATION) {
+//		if (shouldTransmit) {
+//			sprintf(ATcommand, pdnCommands[pdnCommandIndex++]);
+//			HAL_UART_Transmit_IT(&huart1, (uint8_t *) ATcommand, strlen(ATcommand));
+//			shouldTransmit = 0;
+//		}
+//	}
+//
+//	else if (simState == SIM_HTTP_POST) {
+//		if (shouldTransmit) {
+//			sprintf(ATcommand, httpPostCommands[httpPostCommandIndex++]);
+//			HAL_UART_Transmit_IT(&huart1, (uint8_t *) ATcommand, strlen(ATcommand));
+//			shouldTransmit = 0;
+//		}
+//	}
+//
+//	else if (simState == SIM_STANDBY) {
+//		shouldTransmit = 0;
+//	}
+
+
 	return;
 }
 
@@ -102,8 +163,81 @@ void SIM_serialRX_Handler(uint8_t charReceived) {
 
 
 	if ((charReceived == (uint8_t)'\n')) {
-		SIM_Handler();
+
+		switch (simState) {
+			case SIM_INIT:
+				SIM_Init_Handler();
+				break;
+			case SIM_UE_CHECK:
+				SIM_UE_Check_Handler();
+				break;
+			case SIM_PDN_ACTIVATION:
+				SIM_PDN_Activation();
+				break;
+			default:
+				break;
+		}
+
 	}
+
+
+//
+//	// Check if command was received; is 'OK' returned
+//	if (strstr((char*) serialRX_Buffer, "\nOK\r\n")) {
+//
+//		if (simState == SIM_INIT) {
+//			simState = SIM_UE_CHECK;
+//			clearBuffer = 1;
+//			shouldTransmit = 1;
+//
+//		} else if (simState == SIM_UE_CHECK) {
+//
+//			if (strstr((char*) serialRX_Buffer, "AT+CPSI?\r\r\n+CPSI: LTE NB-IOT,Online")) {
+//				// SIM is connected to NB-IoT
+//				simState = SIM_PDN_ACTIVATION;
+//				clearBuffer = 1;
+//				shouldTransmit = 1;
+//			} else {
+//				// SIM is NOT connected to NB-IoT
+//				// NB-IoT setup should now happen
+//				simState = SIM_CONNECT_NBIOT;
+//				clearBuffer = 1;
+//				shouldTransmit = 1;
+//			}
+//
+//		} else if (simState == SIM_COMMAND_TEST) {
+//			simState = SIM_STANDBY;
+//			clearBuffer = 1;
+//			shouldTransmit = 1;
+//
+//		} else if (simState == SIM_PDN_ACTIVATION) {
+//			strncpy((char*)pdnFeedback[pdnCommandIndex-1], (char*)serialRX_Buffer, sizeof(pdnFeedback[0]));
+//			if (pdnCommandIndex + 1 > PDN_LENGTH) { // Command sequence complete
+//				simState = SIM_HTTP_POST;
+//			}
+//			clearBuffer = 1;
+//			shouldTransmit = 1;
+//
+//		} else if (simState == SIM_HTTP_POST) {
+//			strncpy((char*)httpPostFeedback[httpPostCommandIndex-1], (char*)serialRX_Buffer, sizeof(httpPostFeedback[0]));
+//			if (httpPostCommandIndex + 1 > HTTP_POST_LENGTH) { // Command sequence complete
+//				simState = SIM_STANDBY;
+////				AT+SHCONN\r\r\nERROR\r\n
+//			}
+//			clearBuffer = 1;
+//			shouldTransmit = 1;
+//		}
+//
+//
+//
+//
+//	} // end if 'OK' was returned
+//
+//	if (strstr((char*) serialRX_Buffer, "\nERROR\r\n")) { // Error message returned
+//		simState = SIM_STANDBY;
+//	}
+
+
 
 
 	if (clearBuffer) { // reset index and clear buffer
