@@ -19,8 +19,8 @@ typedef enum {
 	SIM_INIT,
 	SIM_UE_CHECK,
 	SIM_PDN_ACTIVATION,
-	SIM_HTTP_BUILD,
-	SIM_HTTP_POST,
+	SIM_HTTP_POST_BUILD,
+	SIM_HTTP_MAKE_POST,
 	SIM_ERROR,
 	SIM_STANDBY,
 	SIM_CONNECT_SERVICE,
@@ -37,11 +37,14 @@ typedef enum {
 
 // Prototypes begin
 void SIM_Handler(void);
-void SIM_Init_Handler(void);
-void SIM_UE_Check_Handler(void);
-void SIM_PDN_Activation(void);
 void SIM_serialRX_Handler(uint8_t charReceived);
+void SIM_Init(void);
+void SIM_UE_Check(void);
+void SIM_PDN_Activation(void);
+void SIM_HTTP_Post_Build(void);
+void SIM_HTTP_Make_Post(void);
 
+void copySubstringFromMatch(char* destination, char* source, char* strToMatch);
 
 // Prototypes end
 

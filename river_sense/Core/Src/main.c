@@ -61,6 +61,7 @@ uint8_t rx_data;
 uint8_t data_received[100] = {0};
 uint8_t data_index = 0;
 
+volatile uint8_t isLD3_Flicker = 1;
 
 
 /* USER CODE END PV */
@@ -90,6 +91,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
   if(huart->Instance==USART1)
   {
+
 //    // if the character received is other than 'enter' ascii13, save the data in buffer
 //    if(rx_data!=13)
 //    {
@@ -98,7 +100,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 //
 //    data_received[data_index++] = serialRX_Data;
 
-    SIM_serialRX_Handler(serialRX_Data);
+
+	  SIM_serialRX_Handler(serialRX_Data);
 
 //
 //    if (data_index > 2) {
@@ -115,7 +118,13 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 
 	// Toggle LED; Just for fun
-	HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
+	if (isLD3_Flicker) {
+		HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
+	}
+	else {
+		HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
+	}
+
 
 	// Call SIM Module handler
 	SIM_Handler();
@@ -157,8 +166,9 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
 
-  // Transmit to SIM Module to set up communication (think this is needed because of auto
-  // baud rate); Delay is necessary
+  // Baud rate synchronization
+  // SIM7000 Series_UART_ApplicationNote_V1.01 p11
+  // TODO: incorporate this in a state
   HAL_UART_Transmit_IT(&huart1, (uint8_t *) "AT\r\n", strlen("AT\r\n"));
   HAL_Delay(1000);
   HAL_UART_Transmit_IT(&huart1, (uint8_t *) "AT\r\n", strlen("AT\r\n"));

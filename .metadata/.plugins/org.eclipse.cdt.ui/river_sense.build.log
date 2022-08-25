@@ -1,10 +1,10 @@
-22:25:27 **** Incremental Build of configuration Debug for project river_sense ****
+20:55:40 **** Incremental Build of configuration Debug for project river_sense ****
 make -j4 all 
 arm-none-eabi-size   river_sense.elf 
    text	   data	    bss	    dec	    hex	filename
-  22140	    124	   3148	  25412	   6344	river_sense.elf
+  28876	    124	   3300	  32300	   7e2c	river_sense.elf
 Finished building: default.size.stdout
  
 
-22:25:28 Build Finished. 0 errors, 0 warnings. (took 498ms)
+20:55:41 Build Finished. 0 errors, 0 warnings. (took 673ms)
 
