@@ -1,8 +1,8 @@
-../Core/Src/sim7070g.c:43:6:SIM_Handler	8	static
-../Core/Src/sim7070g.c:70:6:SIM_serialRX_Handler	16	static
-../Core/Src/sim7070g.c:95:6:SIM_Init	16	static
-../Core/Src/sim7070g.c:177:6:SIM_UE_Check	16	static
-../Core/Src/sim7070g.c:247:6:SIM_PDN_Activation	16	static
-../Core/Src/sim7070g.c:389:6:SIM_HTTP_Post_Build	16	static
-../Core/Src/sim7070g.c:544:6:SIM_HTTP_Make_Post	32	static
-../Core/Src/sim7070g.c:748:6:copySubstringFromMatch	32	static
+../Core/Src/sim7070g.c:59:6:SIM_Handler	8	static
+../Core/Src/sim7070g.c:86:6:SIM_serialRX_Handler	16	static
+../Core/Src/sim7070g.c:111:6:SIM_Init	16	static
+../Core/Src/sim7070g.c:193:6:SIM_UE_Check	16	static
+../Core/Src/sim7070g.c:263:6:SIM_PDN_Activation	16	static
+../Core/Src/sim7070g.c:405:6:SIM_HTTP_Post_Build	16	static
+../Core/Src/sim7070g.c:560:6:SIM_HTTP_Make_Post	32	static
+../Core/Src/sim7070g.c:804:6:copySubstringFromMatch	32	static

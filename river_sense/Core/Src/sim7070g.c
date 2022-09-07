@@ -17,9 +17,9 @@ extern UART_HandleTypeDef huart1;
 extern volatile uint8_t isLD3_Flicker;
 // External variables end
 
-simStateType volatile simState = SIM_INIT;
+simStateType volatile simState = SIM_STANDBY;
 uint8_t shouldTransmit = 1;
-char ATcommand[80];
+char ATcommand[100];
 volatile uint16_t commandIndex = 0;
 volatile uint8_t isStateChanged = 0;
 uint8_t serialRX_Buffer[250] = {0};
@@ -27,12 +27,28 @@ uint8_t serialRX_BufferIndex = 0;
 uint8_t serialRX_Data;
 uint8_t clearBuffer = 0;
 
+char commandToSend[100] = "";
+
 // HTTP variables
 char responseSubstring[50] = {0};
 uint16_t statusCodeVal = 0;
 uint16_t dataLengthVal = 0;
-volatile uint8_t SHREAD_Flag = 0;
 char SHREAD_Data[100] = {0};
+
+// Forms for testing uploading data
+// TODO: Change to data that was collected
+#define TEST_FORM_LENGTH 5
+uint8_t testFormsIndex = 0;
+char testForms[5][40] = {
+	"\"batt_1\",\"2022-09-07 18:47:06,7.89\"",
+	"\"batt_2\",\"2022-09-07 18:52:03,8.29\"",
+	"\"batt_3\",\"2022-09-07 18:57:26,6.99\"",
+	"\"batt_4\",\"2022-09-07 19:02:06,7.33\"",
+	"\"batt_5\",\"2022-09-07 18:07:06,7.67\"",
+};
+uint8_t testFormsSentFlag = 0;
+
+
 
 
 // Buffer to store all data. TODO: remove later
@@ -419,7 +435,7 @@ void SIM_HTTP_Post_Build(void) {
 
 			case 2:
 				// Set up server URL
-				sprintf(ATcommand, "AT+SHCONF=\"URL\",\"http://api.thingspeak.com\"\r\n");
+				sprintf(ATcommand, "AT+SHCONF=\"URL\",\"http://riversense.herokuapp.com\"\r\n");
 				HAL_UART_Transmit_IT(&huart1, (uint8_t *) ATcommand, strlen(ATcommand));
 				break;
 
@@ -550,11 +566,15 @@ void SIM_HTTP_Make_Post(void) {
 	// 3: AT+SHAHEAD="Cache-control","no-cache"
 	// 4: AT+SHAHEAD="Connection","keep-alive"
 	// 5: AT+SHAHEAD="Accept","*/*"
-	// 6: AT+SHREQ="/update?api_key=1EC4ZVYTHEJUAAIO&field2=5",3
-	// 7: AT+SHREAD=0,2 // read http result (second variable dependant on result from SHREQ)
-	// 8: AT+SHDISC - Disconnect HTTP connect
 
-	uint8_t maxCommand = 8;
+	// 6: AT+SHCPARA - Clear body content parameter
+	// 7: AT+SHPARA="batt_1","2022-09-07 18:47:06,7.89" - Add body content parameter(s)
+	// 8: AT+SHREQ="/api/update?API_KEY=9349da48-62ef-496b-831a-4720015ff72a",3 - Set request type is POST and send
+
+	// 9: AT+SHREAD=0,2 // read http result (second variable dependant on result from SHREQ)
+	// 10: AT+SHDISC - Disconnect HTTP connect
+
+	uint8_t maxCommand = 10;
 
 	if ((shouldTransmit) && (commandIndex <= maxCommand)) {
 		// Next command should be transmitted
@@ -591,18 +611,38 @@ void SIM_HTTP_Make_Post(void) {
 				break;
 
 			case 6:
-				// Add header content
-				sprintf(ATcommand, "AT+SHREQ=\"/update?api_key=1EC4ZVYTHEJUAAIO&field1=60\",3\r\nAT\r\n");
+				// Clear body content parameter
+				sprintf(ATcommand, "AT+SHCPARA\r\n");
 				break;
 
-			case 7: ;
+			case 7:
+				// Add body content parameter(s)
+				memset(commandToSend, 0, sizeof(commandToSend)); // clear previous data
+				strcat(commandToSend, "AT+SHPARA=");
+				strcat(commandToSend, (char*)(testForms+testFormsIndex));
+				strcat(commandToSend, "\r\n");
+				++testFormsIndex;
+				if (testFormsIndex == TEST_FORM_LENGTH) {
+					testFormsSentFlag = 1;
+				}
+//				sprintf(ATcommand, "AT+SHPARA=\"batt_1\",\"2022-09-07 18:47:06,7.89\"\r\n");
+				sprintf(ATcommand, commandToSend);
+				break;
+
+			case 8:
+				// Add header content
+//				sprintf(ATcommand, "AT+SHREQ=\"/update?api_key=1EC4ZVYTHEJUAAIO&field1=60\",3\r\nAT\r\n");
+				sprintf(ATcommand, "AT+SHREQ=\"/api/update?API_KEY=9349da48-62ef-496b-831a-4720015ff72a\",3\r\n");
+				break;
+
+			case 9: ;
 				// Read data after request
 				char d[4];
 				itoa(dataLengthVal, d, 10);
 				sprintf(ATcommand, "AT+SHREAD=0,%s\r\n", d);
 				break;
 
-			case 8:
+			case 10:
 				// Disconnect HTTP
 				sprintf(ATcommand, "AT+SHDISC\r\n");
 				break;
@@ -675,6 +715,26 @@ void SIM_HTTP_Make_Post(void) {
 			break;
 
 		case 6:
+			// OK received if body content parameter has been cleared
+			if (strstr((char*) serialRX_Buffer, "\nOK\r\n")) {
+				isIncrementCommand = 1;
+			}
+			break;
+
+		case 7:
+			// OK received if body content parameter is added
+			if (strstr((char*) serialRX_Buffer, "\nOK\r\n")) {
+				if (!testFormsSentFlag) {
+					clearBuffer = 1;
+					shouldTransmit = 1;
+					commandIndex = 7;
+				} else {
+					isIncrementCommand = 1;
+				}
+			}
+			break;
+
+		case 8:
 			if (strstr((char*) serialRX_Buffer, "+SHREQ: \"POST\"")) {
 				copySubstringFromMatch(responseSubstring, (char*)serialRX_Buffer, "+SHREQ: \"POST\"");
 				// +SHREQ: \"POST\",200,2\r\n
@@ -696,21 +756,17 @@ void SIM_HTTP_Make_Post(void) {
 			}
 			break;
 
-		case 7:
+		case 9:
 			// should only move on to next command after second time that +SHREAD: is matched
 			// done to ensure that the full request data has been sent back
-			if (strstr((char*) serialRX_Buffer, "+SHREAD:")) {
+			if (strstr((char*) serialRX_Buffer, "}\n\r\n")) {
 				// Set flag
-				++SHREAD_Flag;
-				if (SHREAD_Flag>4) {
-					copySubstringFromMatch(SHREAD_Data, (char*)serialRX_Buffer, "+SHREAD:");
-					SHREAD_Flag = 0;
-					isIncrementCommand = 1;
-				}
+				copySubstringFromMatch(SHREAD_Data, (char*)serialRX_Buffer, "+SHREAD:");
+				isIncrementCommand = 1;
 			}
 			break;
 
-		case 8:
+		case 10:
 			// OK received. Successful disconnect.
 			if (strstr((char*) serialRX_Buffer, "+SHDISC\r\r\nOK\r\n")) {
 				isIncrementCommand = 1;

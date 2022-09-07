@@ -87,35 +87,17 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 }
 
 // UART Receive Callback
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-  if(huart->Instance==USART1)
-  {
-
-//    // if the character received is other than 'enter' ascii13, save the data in buffer
-//    if(rx_data!=13)
-//    {
-//      rx_buffer[rx_index++]=rx_data;
-//    }
-//
-//    data_received[data_index++] = serialRX_Data;
-
-
-	  SIM_serialRX_Handler(serialRX_Data);
-
-//
-//    if (data_index > 2) {
-////    	HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
-//    }
-
-    // Enabling interrupt receive again
-    HAL_UART_Receive_IT(&huart1, &serialRX_Data, 1); // receive data (one character only)
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+	if(huart->Instance==USART1) {
+		SIM_serialRX_Handler(serialRX_Data);
+		// Enabling interrupt receive again
+		HAL_UART_Receive_IT(&huart1, &serialRX_Data, 1); // receive data (one character only)
   }
+
 }
 
-// TIM Callback (200ms)
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
+// TIM Callback (100ms)
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 
 	// Toggle LED; Just for fun
 	if (isLD3_Flicker) {
@@ -308,9 +290,9 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 32000;
+  htim2.Init.Prescaler = 319;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 100;
+  htim2.Init.Period = 9999;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
