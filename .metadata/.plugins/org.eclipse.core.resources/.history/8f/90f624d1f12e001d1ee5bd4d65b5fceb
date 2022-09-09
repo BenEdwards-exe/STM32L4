@@ -1,0 +1,13 @@
+/*
+ * user_diskio_spi.h
+ *
+ *  Created on: Sep 7, 2022
+ *      Author: benjr
+ */
+
+#ifndef TARGET_USER_DISKIO_SPI_H_
+#define TARGET_USER_DISKIO_SPI_H_
+
+
+
+#endif /* TARGET_USER_DISKIO_SPI_H_ */

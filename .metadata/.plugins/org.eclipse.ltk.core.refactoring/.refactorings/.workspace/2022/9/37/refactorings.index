@@ -1,0 +1,5 @@
+1662584343418	Delete resource 'river_sense/FATFS/App/fatfs.c'
+1662584348143	Delete resource 'river_sense/FATFS/App/fatfs.h'
+1662584424606	Delete resource 'river_sense/Core/Inc/fatfs.h'
+1662584428393	Delete resource 'river_sense/Core/Src/fatfs.c'
+1662585093727	Delete resource 'river_sense/FATFS/Target/user_diskio_spi'

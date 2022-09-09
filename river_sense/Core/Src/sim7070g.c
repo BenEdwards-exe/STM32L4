@@ -17,7 +17,7 @@ extern UART_HandleTypeDef huart1;
 extern volatile uint8_t isLD3_Flicker;
 // External variables end
 
-simStateType volatile simState = SIM_STANDBY;
+simStateType volatile simState = SIM_STANDBY; // SIM_INIT
 uint8_t shouldTransmit = 1;
 char ATcommand[100];
 volatile uint16_t commandIndex = 0;
@@ -50,7 +50,6 @@ uint8_t testFormsSentFlag = 0;
 
 
 
-
 // Buffer to store all data. TODO: remove later
 uint8_t allRX_Data[1000] = {0};
 uint8_t allRX_Data_Index = 0;
@@ -68,12 +67,14 @@ void SIM_Handler(void) {
 		case SIM_PDN_ACTIVATION:
 			SIM_PDN_Activation();
 			break;
-		case SIM_HTTP_POST_BUILD:
-			SIM_HTTP_Post_Build();
+		case SIM_HTTP_BUILD:
+			SIM_HTTP_Build(SIM_HTTP_MAKE_GET);
 			break;
 		case SIM_HTTP_MAKE_POST:
 			SIM_HTTP_Make_Post();
 			break;
+		case SIM_HTTP_MAKE_GET:
+			SIM_HTTP_Make_Get();
 		default:
 			break;
 	}
@@ -90,12 +91,9 @@ void SIM_serialRX_Handler(uint8_t charReceived) {
 	// Remove later; Just for tracking
 	allRX_Data[allRX_Data_Index++] = charReceived;
 
-
-
 	if ((charReceived == (uint8_t)'\n')) {
 		SIM_Handler();
 	}
-
 
 	if (clearBuffer) { // reset index and clear buffer
 		serialRX_BufferIndex = 0;
@@ -359,7 +357,7 @@ void SIM_PDN_Activation(void) {
 				else if ( (strstr((char*) serialRX_Buffer, "\r\n+CNACT: 0,1,")) && (strstr((char*) serialRX_Buffer, "\r\nOK\r\n"))) {
 					// Network is already activated
 					// Change state; Clear buffer; Enable transmit
-					simState = SIM_HTTP_POST_BUILD;
+					simState = SIM_HTTP_BUILD;
 					isStateChanged = 1;
 					clearBuffer = 1;
 					shouldTransmit = 1;
@@ -371,7 +369,7 @@ void SIM_PDN_Activation(void) {
 				if ( strstr((char*) serialRX_Buffer, "+APP PDP: 0,ACTIVE\r\n") ) {
 					// Successful network activation
 					// Change state; Clear buffer; Enable transmit
-					simState = SIM_HTTP_POST_BUILD;
+					simState = SIM_HTTP_BUILD;
 					isStateChanged = 1;
 					clearBuffer = 1;
 					shouldTransmit = 1;
@@ -401,18 +399,18 @@ void SIM_PDN_Activation(void) {
 	return;
 }
 
-
-void SIM_HTTP_Post_Build(void) {
+// nextState: State to go in next (POST or GET)
+void SIM_HTTP_Build(simStateType nextState) {
 
 	// ---------------------------- TX ------------------------------- //
 	//
 	// 0: AT+SHSTATE? - Get HTTP status
 	// 1: AT+SHDISC - Disconnect HTTP (only send if connection exists).
-	// 2: AT+SHCONF="URL","http://api.thingspeak.com" - Set up server URL
+	// 2: AT+SHCONF="URL","http://riversense.herokuapp.com" - Set up server URL
 	// 3: AT+SHCONF="BODYLEN",1024 - Set HTTP body length
 	// 4: AT+SHCONF="HEADERLEN",350 - Set HTTP head length
 	// 5: AT+SHCONN - HTTP build (retry if unsuccessful)
-	// Change from SIM_HTTP_POST_BUILD to HTTP_MAKE_POST
+	// Change to either HTTP_MAKE_GET or to HTTP_MAKE_POST
 
 
 	uint8_t maxCommand = 5;
@@ -518,7 +516,7 @@ void SIM_HTTP_Post_Build(void) {
 		case 5:
 			// Connection successful
 			if (strstr((char*) serialRX_Buffer, "AT+SHCONN\r\r\nOK\r\n")) {
-				simState = SIM_HTTP_MAKE_POST;
+				simState = nextState;
 				isStateChanged = 1;
 				shouldTransmit = 1;
 				clearBuffer = 1;
@@ -666,7 +664,7 @@ void SIM_HTTP_Make_Post(void) {
 			// +SHSTATE: 0\r\n\r\nOK\r\n - HTTP disconnect state
 			if (strstr((char*) serialRX_Buffer, "+SHSTATE: 0\r\n\r\nOK\r\n")) {
 				// If disconnected, build HTTP post
-				simState = SIM_HTTP_POST_BUILD;
+				simState = SIM_HTTP_BUILD;
 				isStateChanged = 1;
 				clearBuffer = 1; // Clear buffer to receive next response
 				shouldTransmit = 1; // Can transmit next command
@@ -757,8 +755,7 @@ void SIM_HTTP_Make_Post(void) {
 			break;
 
 		case 9:
-			// should only move on to next command after second time that +SHREAD: is matched
-			// done to ensure that the full request data has been sent back
+			// All data has been received
 			if (strstr((char*) serialRX_Buffer, "}\n\r\n")) {
 				// Set flag
 				copySubstringFromMatch(SHREAD_Data, (char*)serialRX_Buffer, "+SHREAD:");
@@ -799,6 +796,190 @@ void SIM_HTTP_Make_Post(void) {
 
 	return;
 }
+
+
+
+void SIM_HTTP_Make_Get(void) {
+	// ---------------------------- TX ------------------------------- //
+	//
+	// 0: AT+SHSTATE? - Get HTTP status
+	// 1: AT+SHCHEAD - Clear HTTP header
+	// 2: AT+SHAHEAD="User-Agent","curl/7.47.0"
+	// 3: AT+SHAHEAD="Cache-control","no-cache"
+	// 4: AT+SHAHEAD="Connection","keep-alive"
+	// 5: AT+SHAHEAD="Accept","*/*"
+	// 6: AT+SHREQ="/api/time?API_KEY=9349da48-62ef-496b-831a-4720015ff72a",1
+	// 7: AT+SHREAD=0,2 // read http result (second variable dependant on result from SHREQ)
+	// 8: AT+SHDISC - Disconnect HTTP connect
+
+	uint8_t maxCommand = 8;
+
+	if ((shouldTransmit) && (commandIndex <= maxCommand)) {
+		// Next command should be transmitted
+
+		switch (commandIndex) {
+			case 0:
+				// Get HTTP header
+				sprintf(ATcommand, "AT+SHSTATE?\r\n");
+				break;
+			case 1:
+				// Clear HTTP header
+				sprintf(ATcommand, "AT+SHCHEAD\r\n");
+				break;
+			case 2:
+				// Add header content
+				sprintf(ATcommand, "AT+SHAHEAD=\"User-Agent\",\"curl/7.47.0\"\r\n");
+				break;
+			case 3:
+				// Add header content
+				sprintf(ATcommand, "AT+SHAHEAD=\"Cache-control\",\"no-cache\"\r\n");
+				break;
+			case 4:
+				// Add header content
+				sprintf(ATcommand, "AT+SHAHEAD=\"Connection\",\"keep-alive\"\r\n");
+				break;
+			case 5:
+				// Add header content
+				sprintf(ATcommand, "AT+SHAHEAD=\"Accept\",\"*/*\"\r\n");
+				break;
+			case 6:
+				// Set request (1: GET)
+				sprintf(ATcommand, "AT+SHREQ=\"/api/time?API_KEY=9349da48-62ef-496b-831a-4720015ff72a\",1\r\n");
+				break;
+			case 7: ;
+				// Read data after request
+				char d[4];
+				itoa(dataLengthVal, d, 10);
+				sprintf(ATcommand, "AT+SHREAD=0,%s\r\n", d);
+				break;
+			case 8:
+				// Disconnect HTTP
+				sprintf(ATcommand, "AT+SHDISC\r\n");
+				break;
+			default:
+				break;
+		}
+
+
+		HAL_UART_Transmit_IT(&huart1, (uint8_t *) ATcommand, strlen(ATcommand)); // Transmit AT command
+		shouldTransmit = 0; // no transmission until response has been read
+
+	} // if shouldTransmit
+	// --------------------------------------------------------------- //
+
+	// ---------------------------- RX ------------------------------- //
+	uint8_t isIncrementCommand = 0;
+
+	switch (commandIndex) {
+		case 0:
+			// +SHSTATE: 0\r\n\r\nOK\r\n - HTTP disconnect state
+			if (strstr((char*) serialRX_Buffer, "+SHSTATE: 0\r\n\r\nOK\r\n")) {
+				// If disconnected, build HTTP post
+				simState = SIM_HTTP_BUILD;
+				isStateChanged = 1;
+				clearBuffer = 1; // Clear buffer to receive next response
+				shouldTransmit = 1; // Can transmit next command
+			}
+			// +SHSTATE: 1\r\n\r\nOK\r\n - HTTP connect state
+			else if (strstr((char*) serialRX_Buffer, "+SHSTATE: 1\r\n\r\nOK\r\n")) {
+				commandIndex = 1; // AT+SHDISC next command
+				clearBuffer = 1; // Clear buffer to receive next response
+				shouldTransmit = 1; // Can transmit next command
+			}
+			break;
+		case 1:
+			// OK received. Header cleared.
+			if (strstr((char*) serialRX_Buffer, "\nOK\r\n")) {
+				isIncrementCommand = 1;
+			}
+			break;
+		case 2:
+			// OK received if header content was added
+			if (strstr((char*) serialRX_Buffer, "\nOK\r\n")) {
+				isIncrementCommand = 1;
+			}
+			break;
+		case 3:
+			// OK received if header content was added
+			if (strstr((char*) serialRX_Buffer, "\nOK\r\n")) {
+				isIncrementCommand = 1;
+			}
+			break;
+		case 4:
+			// OK received if header content was added
+			if (strstr((char*) serialRX_Buffer, "\nOK\r\n")) {
+				isIncrementCommand = 1;
+			}
+			break;
+		case 5:
+			// OK received if header content was added
+			if (strstr((char*) serialRX_Buffer, "\nOK\r\n")) {
+				isIncrementCommand = 1;
+			}
+			break;
+		case 6:
+			if (strstr((char*) serialRX_Buffer, "+SHREQ: \"GET\"")) {
+				copySubstringFromMatch(responseSubstring, (char*)serialRX_Buffer, "+SHREQ: \"GET\"");
+				// +SHREQ: \"GET\",200,36\r\n
+				uint8_t splittedValIndex = 0;
+				uint16_t splittedVal[4] = {0};
+				char* token;
+				if (strstr(responseSubstring, "\r\n")) { // response has finished transmitting
+					token = strtok(responseSubstring, ",");
+					while (token != NULL  && splittedValIndex<4) {
+						splittedVal[++splittedValIndex] = atoi(token);
+						token = strtok(NULL, ",");
+					}
+					statusCodeVal = splittedVal[2]; // TODO: Wrong status code received? (Do the same for POST)
+					dataLengthVal = splittedVal[3];
+					isIncrementCommand = 1;
+					isLD3_Flicker = 0; // TODO: remove later
+				}
+			}
+			break;
+		case 7:
+			if (strstr((char*) serialRX_Buffer, "}\n\r\n")) {
+				copySubstringFromMatch(SHREAD_Data, (char*) serialRX_Buffer, "+SHREAD:");
+				isIncrementCommand = 1;
+				// TODO: unpack data and update the RTC; Also set appropriate flag
+			}
+			break;
+		case 8:
+			// OK received. Successful disconnect.
+			if (strstr((char*) serialRX_Buffer, "+SHDISC\r\r\nOK\r\n")) {
+				isIncrementCommand = 1;
+				simState = SIM_STANDBY;
+				isStateChanged = 1;
+				isLD3_Flicker = 1; // TODO: remove later
+			}
+			break;
+		default:
+			break;
+	}
+
+	if (isIncrementCommand) {
+		++commandIndex; // Next command
+		clearBuffer = 1; // Clear buffer to receive next response
+		shouldTransmit = 1; // Can transmit next command
+
+		isIncrementCommand = 0;
+	}
+
+	// --------------------------------------------------------------- //
+
+
+	if ((commandIndex > maxCommand) || (isStateChanged)) {
+		commandIndex = 0;
+		isStateChanged = 0;
+	}
+
+
+	return;
+}
+
+
+
+
 
 // No check is implemented for destination that is smaller than the substring
 void copySubstringFromMatch(char* destination, char* source, char* strToMatch) {
