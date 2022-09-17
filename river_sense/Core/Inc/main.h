@@ -31,7 +31,10 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+void set_time(void);
+void get_time(char* currentTime);
+void set_alarm_A(uint32_t secondsOffset);
+void set_alarm_B(uint32_t secondsOffset);
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -59,8 +62,16 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define MCO_Pin GPIO_PIN_0
 #define MCO_GPIO_Port GPIOA
+#define TDS_ADC_IN_Pin GPIO_PIN_2
+#define TDS_ADC_IN_GPIO_Port GPIOA
+#define PH_ADC_IN_Pin GPIO_PIN_3
+#define PH_ADC_IN_GPIO_Port GPIOA
+#define TEMP_ADC_IN_Pin GPIO_PIN_4
+#define TEMP_ADC_IN_GPIO_Port GPIOA
 #define SD_CS_Pin GPIO_PIN_5
 #define SD_CS_GPIO_Port GPIOA
+#define BATT_VOLT_ADC_IN_Pin GPIO_PIN_6
+#define BATT_VOLT_ADC_IN_GPIO_Port GPIOA
 #define UART_TX_SIM_Pin GPIO_PIN_9
 #define UART_TX_SIM_GPIO_Port GPIOA
 #define UART_RX_SIM_Pin GPIO_PIN_10
@@ -75,6 +86,8 @@ void Error_Handler(void);
 #define LD3_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
 #define SD_SPI_HANDLE hspi1
+#define TOTAL_FORMS 100
+#define FORMS_LENGTH 40
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

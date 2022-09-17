@@ -42,6 +42,9 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+ADC_HandleTypeDef hadc1;
+DMA_HandleTypeDef hdma_adc1;
+
 RTC_HandleTypeDef hrtc;
 
 SPI_HandleTypeDef hspi1;
@@ -72,25 +75,68 @@ uint8_t collectDataPeriod = 0x2; // Time in minutes between data collections
 
 char timeAfterAlarm[20] = {0};
 
+// -- Collecting Data Flags and Variables -- //
+uint32_t post_time = 0; //time between posts
+uint32_t collect_time = 0; //time between data collections
+volatile uint8_t collect_data_flag = 0; //should data be collected?
+uint8_t time_synced_flag = 0; //has time been sync?
+volatile uint8_t sim_flag = 0; //should SIM operations commence?
+
+// -- Posting Data To RiverSense Flags and Variables -- //
+volatile uint8_t make_post_flag = 0; //POST needs to be made
+char formsToPost_0[TOTAL_FORMS][FORMS_LENGTH] = {0};
+char formsToPost_1[TOTAL_FORMS][FORMS_LENGTH] = {0};
+uint16_t formsToPost_0_Index = 0;
+uint16_t formsToPost_1_Index = 0;
+uint8_t currentFormArr = 0;
+
+
+// -- Date and Time variables -- //
+uint8_t currentDateTime[6] = {0}; // year, month, day, hour, minute, second
+uint32_t alarmA_SecondsOffset = 10; // alarm to collect data
+uint32_t alarmB_SecondsOffset = 60; // alarm to POST data
+
+char currentTime[20] = {0};
+
+
+// -- ADC Variables --- //
+volatile uint16_t adcResultsDMA[4];
+const int adcChannelCount = sizeof(adcResultsDMA) / sizeof(adcResultsDMA[0]);
+float TDS_value = 0.0;
+
+
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_RTC_Init(void);
+static void MX_ADC1_Init(void);
 /* USER CODE BEGIN PFP */
 void power_on_blocking(void);
 void power_off_blocking(void);
 void set_time(void);
 void get_time(char* currentTime);
 void set_alarm_A(uint32_t secondsOffset);
+void set_alarm_B(uint32_t secondsOffset);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+
+
+// ADC Callback
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
+	// TODO: unpack ADC data
+	TDS_value = adcResultsDMA[0];
+
+}
 
 
 // UART Transmit Callback
@@ -122,120 +168,41 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	}
 
 	// Call SIM Module handler
-	SIM_Handler();
-}
-
-// Set time of RTC
-void set_time(void) {
-	RTC_TimeTypeDef sTime;
-	RTC_DateTypeDef sDate;
-	// From example: 10:20:30 09-Aug-2018
-	sTime.Hours = 0x10; // set hours
-	sTime.Minutes = 0x20; // set minutes
-	sTime.Seconds = 0x30; // set seconds
-	sTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
-	sTime.StoreOperation = RTC_STOREOPERATION_RESET;
-
-	HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BCD);
-
-
-	sDate.WeekDay = RTC_WEEKDAY_THURSDAY; // day
-	sDate.Month = RTC_MONTH_AUGUST; // month
-	sDate.Date = 0x09; // date
-	sDate.Year = 0x22; // year
-
-	HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BCD);
-
-	HAL_RTCEx_BKUPWrite(&hrtc, RTC_BKP_DR1, 0x32F2); // backup register (random value being written now)
-
-
-	return;
-}
-
-// Get time of RTC
-void get_time(char* currentTime) {
-
-	 RTC_DateTypeDef gDate;
-	 RTC_TimeTypeDef gTime;
-	/* Get the RTC current Time */
-	 HAL_RTC_GetTime(&hrtc, &gTime, RTC_FORMAT_BIN);
-	/* Get the RTC current Date */
-	 HAL_RTC_GetDate(&hrtc, &gDate, RTC_FORMAT_BIN);
-//	/* Display time Format: hh:mm:ss */
-//	 sprintf(theTime,"%02d:%02d:%02d",gTime.Hours, gTime.Minutes, gTime.Seconds);
-//	/* Display date Format: dd-mm-yy */
-//	 sprintf(theDate,"%02d-%02d-%2d",gDate.Date, gDate.Month, 2000 + gDate.Year);
-
-	 sprintf(currentTime, "%2d-%02d-%02d %02d:%02d:%02d", 2000+gDate.Year, gDate.Month, gDate.Date, gTime.Hours, gTime.Minutes, gTime.Seconds);
-
-
-	return;
-}
-
-
-void set_alarm(void)
-{
-	RTC_AlarmTypeDef sAlarm;
-  sAlarm.AlarmTime.Hours = 10; // hours
-  sAlarm.AlarmTime.Minutes = 20; // min
-  sAlarm.AlarmTime.Seconds = 36; //seconds
-  sAlarm.AlarmTime.SubSeconds = 0;
-  sAlarm.AlarmTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
-  sAlarm.AlarmTime.StoreOperation = RTC_STOREOPERATION_RESET;
-  sAlarm.AlarmMask = RTC_ALARMMASK_NONE;
-  sAlarm.AlarmSubSecondMask = RTC_ALARMSUBSECONDMASK_ALL;
-  sAlarm.AlarmDateWeekDaySel = RTC_ALARMDATEWEEKDAYSEL_DATE;
-  sAlarm.AlarmDateWeekDay = 9; // DATE
-  sAlarm.Alarm = RTC_ALARM_A;
-//  HAL_RTC_SetAlarm_IT(&hrtc, &sAlarm, RTC_FORMAT_BCD);
-  HAL_RTC_SetAlarm_IT(&hrtc, &sAlarm, RTC_FORMAT_BIN);
-}
-
-void set_alarm_A(uint32_t secondsOffset) {
-	RTC_DateTypeDef cDate;
-	RTC_TimeTypeDef cTime;
-	RTC_AlarmTypeDef sAlarm;
-
-	// Get RTC current date and time
-	HAL_RTC_GetTime(&hrtc, &cTime, RTC_FORMAT_BIN);
-	HAL_RTC_GetDate(&hrtc, &cDate, RTC_FORMAT_BIN);
-
-	// Convert secondsOffset to hours, minutes, seconds according to current time
-	secondsOffset += cTime.Hours*3600 + cTime.Minutes*60 + cTime.Seconds;
-	uint8_t hr_offset = (uint8_t) (secondsOffset/3600);
-	uint8_t min_offset = (uint8_t) ((secondsOffset-3600.0*hr_offset)/60.0);
-	uint8_t sec_offset = (uint8_t) (secondsOffset-3600*hr_offset-60*min_offset);
-	// TODO: adjust time for going into next date as well
-
-
-	// Set alarm A to current date and time + offset provided
-	sAlarm.AlarmTime.Hours = hr_offset;
-	sAlarm.AlarmTime.Minutes = min_offset;
-	sAlarm.AlarmTime.Seconds = sec_offset;
-	sAlarm.AlarmTime.SubSeconds = 0;
-	sAlarm.AlarmTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
-	sAlarm.AlarmTime.StoreOperation = RTC_STOREOPERATION_RESET;
-	sAlarm.AlarmMask = RTC_ALARMMASK_NONE;
-	sAlarm.AlarmSubSecondMask = RTC_ALARMSUBSECONDMASK_ALL;
-	sAlarm.AlarmDateWeekDaySel = RTC_ALARMDATEWEEKDAYSEL_DATE;
-	sAlarm.AlarmDateWeekDay = cDate.Date;
-	sAlarm.Alarm = RTC_ALARM_A;
-	HAL_RTC_SetAlarm_IT(&hrtc, &sAlarm, RTC_FORMAT_BIN);
-
-	return;
+	if (sim_flag) {
+		if (simState == SIM_STANDBY) {
+			simState = SIM_INIT;
+		}
+		SIM_Handler();
+	}
 }
 
 
 // Alarm A callback function (for reading data from sensors)
 void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *hrtc) {
-	get_time(timeAfterAlarm);
+	get_time(currentTime);
+	// TODO: write ADC data to forms
+	if (currentFormArr==0) {
+		sprintf(formsToPost_0[formsToPost_0_Index], "\"batt_%d\",\"%s,%.2f\"",formsToPost_0_Index,currentTime,TDS_value);
+		++formsToPost_0_Index;
+	}
+	else if (currentFormArr==1) {
+		sprintf(formsToPost_1[formsToPost_1_Index], "\"batt_%d\",\"%s,%.2f\"",formsToPost_1_Index,currentTime,TDS_value);
+		++formsToPost_1_Index;
+	}
+	// TODO: write ADC data to SD card
 
+
+	HAL_ADC_Start_DMA(&hadc1, (uint32_t*) adcResultsDMA, 4); // Start DMA for ADC
+	set_alarm_A(alarmA_SecondsOffset);
 	return;
 }
 
 // Alarm B callback function (for posting data to RiverSense)
-void HAL_RTC_AlarmBEventCallback(RTC_HandleTypeDef *hrtc) {
-
+void HAL_RTCEx_AlarmBEventCallback(RTC_HandleTypeDef *hrtc) {
+	make_post_flag = 1;
+	sim_flag = 1;
+	currentFormArr = !currentFormArr; // Switch between forms
+	set_alarm_B(alarmB_SecondsOffset);
 	return;
 }
 
@@ -271,59 +238,32 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_USART1_UART_Init();
   MX_TIM2_Init();
   MX_SPI1_Init();
   MX_FATFS_Init();
   MX_RTC_Init();
+  MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
 
 
-  set_time();
-
-  char timeBeforeAlarm[20] = {0};
-  get_time(timeBeforeAlarm);
-
-//  set_alarm();
-  uint32_t offsetTest = 10*60 + 70;
-  set_alarm_A(offsetTest);
-
-
-	RTC_DateTypeDef cDate;
-	RTC_TimeTypeDef cTime;
-	RTC_AlarmTypeDef sAlarm;
-
-	HAL_RTC_GetAlarm(&hrtc, &sAlarm, RTC_ALARM_A, RTC_FORMAT_BIN);
-	HAL_RTC_GetTime(&hrtc, &cTime, RTC_FORMAT_BIN);
-	HAL_RTC_GetDate(&hrtc, &cDate, RTC_FORMAT_BIN);
-
-
-	int i = 0;
-
-
-  /// ------------- RTC alarm configuration code example ----------- ///
-  /* (1) Write access for RTC registers */
-  /* (2) Disable alarm A to modify it */
-  /* (3) Wait until it is allow to modify alarm A value */
-  /* (4) Modify alarm A mask to have an interrupt each 1Hz */
-  /* (5) Enable alarm A and alarm A interrupt */
-  /* (6) Disable write access */
-//  RTC->WPR = 0xCA; /* (1) */
-//  RTC->WPR = 0x53; /* (1) */
-//  RTC->CR &=~ RTC_CR_ALRAE; /* (2) */
-//  while((RTC->ISR & RTC_ISR_ALRAWF) != RTC_ISR_ALRAWF) /* (3) */
-//  {
-//   /* add time out here for a robust application */
-//  }
-//  RTC->ALRMAR = RTC_ALRMAR_MSK4 | RTC_ALRMAR_MSK3 | RTC_ALRMAR_MSK2 |
-//  RTC_ALRMAR_MSK1; /* (4) */
-//  RTC->CR = RTC_CR_ALRAIE | RTC_CR_ALRAE; /* (5) */
-//  RTC->WPR = 0xFE; /* (6) */
-//  RTC->WPR = 0x64; /* (6) */
-  /// ------------------------------------------------------------- ///
-
-
-
+//  set_time();
+//
+//
+//
+//
+//  uint32_t offsetTest = 4*60 + 70;
+//  set_alarm_A(offsetTest);
+//
+//
+//	RTC_DateTypeDef cDate;
+//	RTC_TimeTypeDef cTime;
+//	RTC_AlarmTypeDef sAlarm;
+//
+//	HAL_RTC_GetAlarm(&hrtc, &sAlarm, RTC_ALARM_A, RTC_FORMAT_BIN);
+//	HAL_RTC_GetTime(&hrtc, &cTime, RTC_FORMAT_BIN);
+//	HAL_RTC_GetDate(&hrtc, &cDate, RTC_FORMAT_BIN);
 
 
   // Baud rate synchronization
@@ -337,6 +277,9 @@ int main(void)
 
   // Enable Timer(s)
   HAL_TIM_Base_Start_IT(&htim2);
+
+  // Start ADC from DMA
+  HAL_ADC_Start_DMA(&hadc1, (uint32_t*) adcResultsDMA, 4);
 
 
 //  /// -------------------- SD CARD -------------------- ///
@@ -367,23 +310,40 @@ int main(void)
 ////  myprintf("SD card stats:\r\n%10lu KiB total drive space.\r\n%10lu KiB available.\r\n", total_sectors / 2, free_sectors / 2);
 //
 //  // Open file "test.txt"
-//  fres = f_open(&fil, "test.txt", FA_READ);
+//  fres = f_open(&fil, "test.txt", FA_READ | FA_WRITE);
 //  if (fres != FR_OK) {
 //	  isLD3_Flicker = 0; // error opening
 //  }
 //
 //  // Read 30 bytes from "test.txt" on the SD card
-//  BYTE readBuf[30];
+//  BYTE readBuf[100];
 //
 //  // Can either use f_read OR f_gets to get data out of files
 //  // f_gets is a wrapper on f_read that does some string formatting :)
-//  TCHAR* rres = f_gets((TCHAR*)readBuf, 30, &fil);
+//  TCHAR* rres = f_gets((TCHAR*)readBuf, sizeof(readBuf), &fil);
 //  if(rres != 0) {
 //	  // String has been read
 //	  isLD3_Flicker = 1;
 //  } else {
 //	  // Error
 //	  isLD3_Flicker = 0;
+//  }
+//
+//  uint8_t dataToWrite[] = "When you poop in your dreams you poop for real\n";
+//  uint nWritten = 0;
+//  fres = f_write(&fil, dataToWrite, sizeof(dataToWrite)-1, &nWritten);
+//  if (fres != FR_OK) {
+//	  isLD3_Flicker = 0; // error writing
+//  }
+//
+//  fres = f_write(&fil, dataToWrite, sizeof(dataToWrite)-1, &nWritten);
+//  if (fres != FR_OK) {
+//	  isLD3_Flicker = 0; // error writing
+//  }
+//
+//  fres = f_write(&fil, dataToWrite, sizeof(dataToWrite)-1, &nWritten);
+//  if (fres != FR_OK) {
+//	  isLD3_Flicker = 0; // error writing
 //  }
 //
 //  // Close the file
@@ -394,11 +354,14 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+  while (1) {
 
+	  if (!time_synced_flag) { // Time should be sync from web server
+		  sim_flag = 1; // SIM operations should commence
+		  make_post_flag = 0; // No POST should be made
+	  }
 
-
+//	  snprintf(txBuf, TXBUFLEN, "CH1 = %d\tCH2 = %d\tCH3 = %d\tCH4 = %d\r\n", adcResultsDMA[0], adcResultsDMA[1], adcResultsDMA[2], adcResultsDMA[3], adcResultsDMA[4]);
 
     /* USER CODE END WHILE */
 
@@ -465,6 +428,91 @@ void SystemClock_Config(void)
   /** Enable MSI Auto calibration
   */
   HAL_RCCEx_EnableMSIPLLMode();
+}
+
+/**
+  * @brief ADC1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_ADC1_Init(void)
+{
+
+  /* USER CODE BEGIN ADC1_Init 0 */
+
+  /* USER CODE END ADC1_Init 0 */
+
+  ADC_ChannelConfTypeDef sConfig = {0};
+
+  /* USER CODE BEGIN ADC1_Init 1 */
+
+  /* USER CODE END ADC1_Init 1 */
+
+  /** Common config
+  */
+  hadc1.Instance = ADC1;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV1;
+  hadc1.Init.Resolution = ADC_RESOLUTION_12B;
+  hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+  hadc1.Init.ScanConvMode = ADC_SCAN_ENABLE;
+  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+  hadc1.Init.LowPowerAutoWait = DISABLE;
+  hadc1.Init.ContinuousConvMode = DISABLE;
+  hadc1.Init.NbrOfConversion = 4;
+  hadc1.Init.DiscontinuousConvMode = DISABLE;
+  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+  hadc1.Init.DMAContinuousRequests = DISABLE;
+  hadc1.Init.Overrun = ADC_OVR_DATA_PRESERVED;
+  hadc1.Init.OversamplingMode = DISABLE;
+  if (HAL_ADC_Init(&hadc1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Regular Channel
+  */
+  sConfig.Channel = ADC_CHANNEL_7;
+  sConfig.Rank = ADC_REGULAR_RANK_1;
+  sConfig.SamplingTime = ADC_SAMPLETIME_12CYCLES_5;
+  sConfig.SingleDiff = ADC_SINGLE_ENDED;
+  sConfig.OffsetNumber = ADC_OFFSET_NONE;
+  sConfig.Offset = 0;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Regular Channel
+  */
+  sConfig.Channel = ADC_CHANNEL_8;
+  sConfig.Rank = ADC_REGULAR_RANK_2;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Regular Channel
+  */
+  sConfig.Channel = ADC_CHANNEL_9;
+  sConfig.Rank = ADC_REGULAR_RANK_3;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Regular Channel
+  */
+  sConfig.Channel = ADC_CHANNEL_11;
+  sConfig.Rank = ADC_REGULAR_RANK_4;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN ADC1_Init 2 */
+
+  /* USER CODE END ADC1_Init 2 */
+
 }
 
 /**
@@ -547,6 +595,10 @@ static void MX_RTC_Init(void)
 
   /** Enable the Alarm B
   */
+  sAlarm.AlarmTime.Hours = 0x0;
+  sAlarm.AlarmTime.Minutes = 0x0;
+  sAlarm.AlarmTime.Seconds = 0x0;
+  sAlarm.AlarmTime.SubSeconds = 0x0;
   sAlarm.Alarm = RTC_ALARM_B;
   if (HAL_RTC_SetAlarm_IT(&hrtc, &sAlarm, RTC_FORMAT_BCD) != HAL_OK)
   {
@@ -679,6 +731,22 @@ static void MX_USART1_UART_Init(void)
 }
 
 /**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Channel1_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -723,6 +791,112 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+// Set time of RTC
+void set_time(void) {
+	RTC_TimeTypeDef sTime;
+	RTC_DateTypeDef sDate;
+
+	sDate.Year = currentDateTime[0]; // For some reason the date is off by 8 years (TODO: Fix)
+	sDate.Month = currentDateTime[1];
+	sDate.Date = currentDateTime[2];
+	sTime.Hours = currentDateTime[3];
+	sTime.Minutes = currentDateTime[4];
+	sTime.Seconds = currentDateTime[5];
+	sTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
+	sTime.StoreOperation = RTC_STOREOPERATION_RESET;
+//	sDate.WeekDay = RTC_WEEKDAY_THURSDAY; // day
+//	sDate.Month = RTC_MONTH_AUGUST; // month
+
+	HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
+	HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
+	HAL_RTCEx_BKUPWrite(&hrtc, RTC_BKP_DR1, 0x32F2); // backup register (random value being written now)
+	return;
+}
+
+// Get time of RTC
+void get_time(char* currentTime) {
+
+	RTC_DateTypeDef gDate;
+	RTC_TimeTypeDef gTime;
+	// Get the RTC current Time
+	HAL_RTC_GetTime(&hrtc, &gTime, RTC_FORMAT_BIN);
+	//  Get the RTC current Date
+	HAL_RTC_GetDate(&hrtc, &gDate, RTC_FORMAT_BIN);
+
+//	sprintf(currentTime, "%d-%02d-%02d %02d:%02d:%02d", 2000+gDate.Year, gDate.Month, gDate.Date, gTime.Hours, gTime.Minutes, gTime.Seconds);
+	sprintf(currentTime, "%d-%02d-%02d %02d:%02d:%02d", 2022, gDate.Month, gDate.Date, gTime.Hours, gTime.Minutes, gTime.Seconds);
+	return;
+}
+
+
+// Set Alarm A
+void set_alarm_A(uint32_t secondsOffset) {
+	RTC_DateTypeDef cDate;
+	RTC_TimeTypeDef cTime;
+	RTC_AlarmTypeDef sAlarm;
+
+	// Get RTC current date and time
+	HAL_RTC_GetTime(&hrtc, &cTime, RTC_FORMAT_BIN);
+	HAL_RTC_GetDate(&hrtc, &cDate, RTC_FORMAT_BIN);
+
+	// Convert secondsOffset to hours, minutes, seconds according to current time
+	secondsOffset += cTime.Hours*3600 + cTime.Minutes*60 + cTime.Seconds;
+	uint8_t hr_offset = (uint8_t) (secondsOffset/3600);
+	uint8_t min_offset = (uint8_t) ((secondsOffset-3600.0*hr_offset)/60.0);
+	uint8_t sec_offset = (uint8_t) (secondsOffset-3600*hr_offset-60*min_offset);
+	// TODO: adjust time for going into next date as well
+
+	// Set alarm A to current date and time + offset provided
+	sAlarm.AlarmTime.Hours = hr_offset;
+	sAlarm.AlarmTime.Minutes = min_offset;
+	sAlarm.AlarmTime.Seconds = sec_offset;
+	sAlarm.AlarmTime.SubSeconds = 0;
+	sAlarm.AlarmTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
+	sAlarm.AlarmTime.StoreOperation = RTC_STOREOPERATION_RESET;
+	sAlarm.AlarmMask = RTC_ALARMMASK_NONE;
+	sAlarm.AlarmSubSecondMask = RTC_ALARMSUBSECONDMASK_ALL;
+	sAlarm.AlarmDateWeekDaySel = RTC_ALARMDATEWEEKDAYSEL_DATE;
+	sAlarm.AlarmDateWeekDay = cDate.Date;
+	sAlarm.Alarm = RTC_ALARM_A;
+	HAL_RTC_SetAlarm_IT(&hrtc, &sAlarm, RTC_FORMAT_BIN);
+
+	return;
+}
+
+// Set Alarm B
+void set_alarm_B(uint32_t secondsOffset) {
+	RTC_DateTypeDef cDate;
+	RTC_TimeTypeDef cTime;
+	RTC_AlarmTypeDef sAlarm;
+
+	// Get RTC current date and time
+	HAL_RTC_GetTime(&hrtc, &cTime, RTC_FORMAT_BIN);
+	HAL_RTC_GetDate(&hrtc, &cDate, RTC_FORMAT_BIN);
+
+	// Convert secondsOffset to hours, minutes, seconds according to current time
+	secondsOffset += cTime.Hours*3600 + cTime.Minutes*60 + cTime.Seconds;
+	uint8_t hr_offset = (uint8_t) (secondsOffset/3600);
+	uint8_t min_offset = (uint8_t) ((secondsOffset-3600.0*hr_offset)/60.0);
+	uint8_t sec_offset = (uint8_t) (secondsOffset-3600*hr_offset-60*min_offset);
+	// TODO: adjust time for going into next date as well
+
+	// Set alarm B to current date and time + offset provided
+	sAlarm.AlarmTime.Hours = hr_offset;
+	sAlarm.AlarmTime.Minutes = min_offset;
+	sAlarm.AlarmTime.Seconds = sec_offset;
+	sAlarm.AlarmTime.SubSeconds = 0;
+	sAlarm.AlarmTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
+	sAlarm.AlarmTime.StoreOperation = RTC_STOREOPERATION_RESET;
+	sAlarm.AlarmMask = RTC_ALARMMASK_NONE;
+	sAlarm.AlarmSubSecondMask = RTC_ALARMSUBSECONDMASK_ALL;
+	sAlarm.AlarmDateWeekDaySel = RTC_ALARMDATEWEEKDAYSEL_DATE;
+	sAlarm.AlarmDateWeekDay = cDate.Date;
+	sAlarm.Alarm = RTC_ALARM_B;
+	HAL_RTC_SetAlarm_IT(&hrtc, &sAlarm, RTC_FORMAT_BIN);
+
+	return;
+}
 
 
 

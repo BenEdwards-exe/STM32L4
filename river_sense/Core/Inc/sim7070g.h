@@ -47,6 +47,7 @@ void SIM_HTTP_Make_Post(void);
 void SIM_HTTP_Make_Get(void);
 
 void copySubstringFromMatch(char* destination, char* source, char* strToMatch);
+char* substr(const char *src, int m, int n);
 
 // Prototypes end
 

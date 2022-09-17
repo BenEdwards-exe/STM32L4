@@ -1,10 +1,17 @@
-07:25:38 **** Incremental Build of configuration Debug for project river_sense ****
+23:27:24 **** Incremental Build of configuration Debug for project river_sense ****
 make -j4 all 
+arm-none-eabi-gcc "../Core/Src/main.c" -mcpu=cortex-m4 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32L432xx -c -I../Core/Inc -I../Drivers/STM32L4xx_HAL_Driver/Inc -I../Drivers/STM32L4xx_HAL_Driver/Inc/Legacy -I../Drivers/CMSIS/Device/ST/STM32L4xx/Include -I../Drivers/CMSIS/Include -I../FATFS/Target -I../FATFS/App -I../Middlewares/Third_Party/FatFs/src -O0 -ffunction-sections -fdata-sections -Wall -u _print_float -fstack-usage -MMD -MP -MF"Core/Src/main.d" -MT"Core/Src/main.o" --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -o "Core/Src/main.o"
+arm-none-eabi-gcc -o "river_sense.elf" @"objects.list"   -mcpu=cortex-m4 -T"D:\Semester 2\ProjectE_448\Skripsie Workspace\STM32L4\river_sense\STM32L432KCUX_FLASH.ld" --specs=nosys.specs -Wl,-Map="river_sense.map" -Wl,--gc-sections -static -u _print_float --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -u _printf_float -u _scanf_float -Wl,--start-group -lc -lm -Wl,--end-group
+Finished building target: river_sense.elf
+ 
 arm-none-eabi-size   river_sense.elf 
+arm-none-eabi-objdump -h -S  river_sense.elf  > "river_sense.list"
    text	   data	    bss	    dec	    hex	filename
-  41632	    348	   3612	  45592	   b218	river_sense.elf
+  64372	    528	  11816	  76716	  12bac	river_sense.elf
 Finished building: default.size.stdout
  
+Finished building: river_sense.list
+ 
 
-07:25:38 Build Finished. 0 errors, 0 warnings. (took 623ms)
+23:27:26 Build Finished. 0 errors, 0 warnings. (took 1s.961ms)
 

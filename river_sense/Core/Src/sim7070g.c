@@ -17,7 +17,7 @@ extern UART_HandleTypeDef huart1;
 extern volatile uint8_t isLD3_Flicker;
 // External variables end
 
-simStateType volatile simState = SIM_STANDBY; // SIM_INIT
+simStateType volatile simState = SIM_STANDBY;
 uint8_t shouldTransmit = 1;
 char ATcommand[100];
 volatile uint16_t commandIndex = 0;
@@ -35,6 +35,17 @@ uint16_t statusCodeVal = 0;
 uint16_t dataLengthVal = 0;
 char SHREAD_Data[100] = {0};
 
+extern volatile uint8_t make_post_flag;
+extern uint8_t time_synced_flag;
+extern volatile uint8_t sim_flag;
+
+// Date and time (external)
+extern uint8_t currentDateTime[6];
+extern uint32_t alarmA_SecondsOffset;
+extern uint32_t alarmB_SecondsOffset;
+extern char timeBeforeAlarm[20];
+
+
 // Forms for testing uploading data
 // TODO: Change to data that was collected
 #define TEST_FORM_LENGTH 5
@@ -47,6 +58,15 @@ char testForms[5][40] = {
 	"\"batt_5\",\"2022-09-07 18:07:06,7.67\"",
 };
 uint8_t testFormsSentFlag = 0;
+
+// Forms that need to be sent
+extern char formsToPost_0[TOTAL_FORMS][FORMS_LENGTH];
+extern char formsToPost_1[TOTAL_FORMS][FORMS_LENGTH];
+extern uint16_t formsToPost_0_Index;
+extern uint16_t formsToPost_1_Index;
+extern uint8_t currentFormArr;
+volatile uint8_t formsSentFlag = 0;
+uint8_t formsToSendIndex = 0;
 
 
 
@@ -68,7 +88,11 @@ void SIM_Handler(void) {
 			SIM_PDN_Activation();
 			break;
 		case SIM_HTTP_BUILD:
-			SIM_HTTP_Build(SIM_HTTP_MAKE_GET);
+			if (!time_synced_flag) {
+				SIM_HTTP_Build(SIM_HTTP_MAKE_GET);
+			} else if (make_post_flag) {
+				SIM_HTTP_Build(SIM_HTTP_MAKE_POST);
+			}
 			break;
 		case SIM_HTTP_MAKE_POST:
 			SIM_HTTP_Make_Post();
@@ -88,7 +112,7 @@ void SIM_serialRX_Handler(uint8_t charReceived) {
 
 	serialRX_Buffer[serialRX_BufferIndex++] = charReceived;
 
-	// Remove later; Just for tracking
+	//TODO: Remove later; Just for tracking
 	allRX_Data[allRX_Data_Index++] = charReceived;
 
 	if ((charReceived == (uint8_t)'\n')) {
@@ -617,12 +641,26 @@ void SIM_HTTP_Make_Post(void) {
 				// Add body content parameter(s)
 				memset(commandToSend, 0, sizeof(commandToSend)); // clear previous data
 				strcat(commandToSend, "AT+SHPARA=");
-				strcat(commandToSend, (char*)(testForms+testFormsIndex));
-				strcat(commandToSend, "\r\n");
-				++testFormsIndex;
-				if (testFormsIndex == TEST_FORM_LENGTH) {
-					testFormsSentFlag = 1;
+				if (currentFormArr==0) {
+					strcat(commandToSend, (char*)(formsToPost_1 + formsToSendIndex));
+					++formsToSendIndex;
+					if (formsToSendIndex == formsToPost_1_Index-1) {
+						formsSentFlag = 1;
+						formsToSendIndex = 0;
+						memset(formsToPost_1, 0, sizeof(formsToPost_1));
+						formsToPost_1_Index = 0;
+					}
+				} else if (currentFormArr==1) {
+					++formsToSendIndex;
+					strcat(commandToSend, (char*)(formsToPost_0 + formsToSendIndex));
+					if (formsToSendIndex == formsToPost_0_Index-1) {
+						formsSentFlag = 1;
+						formsToSendIndex = 0;
+						memset(formsToPost_0, 0, sizeof(formsToPost_0)); // clear array data
+						formsToPost_0_Index = 0; // Reset index of array
+					}
 				}
+				strcat(commandToSend, "\r\n");
 //				sprintf(ATcommand, "AT+SHPARA=\"batt_1\",\"2022-09-07 18:47:06,7.89\"\r\n");
 				sprintf(ATcommand, commandToSend);
 				break;
@@ -722,12 +760,14 @@ void SIM_HTTP_Make_Post(void) {
 		case 7:
 			// OK received if body content parameter is added
 			if (strstr((char*) serialRX_Buffer, "\nOK\r\n")) {
-				if (!testFormsSentFlag) {
+				if (!formsSentFlag) {
 					clearBuffer = 1;
 					shouldTransmit = 1;
 					commandIndex = 7;
 				} else {
 					isIncrementCommand = 1;
+//					testFormsSentFlag = 0;
+					formsSentFlag = 0;
 				}
 			}
 			break;
@@ -770,6 +810,9 @@ void SIM_HTTP_Make_Post(void) {
 				simState = SIM_STANDBY;
 				isStateChanged = 1;
 				isLD3_Flicker = 1; // TODO: remove later
+				// Reset flags
+				make_post_flag = 0;
+				sim_flag = 0;
 			}
 			break;
 
@@ -941,7 +984,17 @@ void SIM_HTTP_Make_Get(void) {
 			if (strstr((char*) serialRX_Buffer, "}\n\r\n")) {
 				copySubstringFromMatch(SHREAD_Data, (char*) serialRX_Buffer, "+SHREAD:");
 				isIncrementCommand = 1;
-				// TODO: unpack data and update the RTC; Also set appropriate flag
+//				"+SHREAD: 36\r\n{\n  \"time\": \"2022-09-15 18:12:11\"\n}\n\r\n"
+				currentDateTime[0] = atoi(substr(SHREAD_Data, 26, 30)) - 2000;
+				currentDateTime[1] = atoi(substr(SHREAD_Data, 31, 33));
+				currentDateTime[2] = atoi(substr(SHREAD_Data, 34, 36));
+				currentDateTime[3] = atoi(substr(SHREAD_Data, 37, 39));
+				currentDateTime[4] = atoi(substr(SHREAD_Data, 40, 42));
+				currentDateTime[5] = atoi(substr(SHREAD_Data, 43, 45));
+				set_time();
+				set_alarm_B(alarmB_SecondsOffset);
+				set_alarm_A(alarmA_SecondsOffset);
+				time_synced_flag = 1;
 			}
 			break;
 		case 8:
@@ -949,6 +1002,7 @@ void SIM_HTTP_Make_Get(void) {
 			if (strstr((char*) serialRX_Buffer, "+SHDISC\r\r\nOK\r\n")) {
 				isIncrementCommand = 1;
 				simState = SIM_STANDBY;
+				sim_flag = 0;
 				isStateChanged = 1;
 				isLD3_Flicker = 1; // TODO: remove later
 			}
@@ -977,10 +1031,6 @@ void SIM_HTTP_Make_Get(void) {
 	return;
 }
 
-
-
-
-
 // No check is implemented for destination that is smaller than the substring
 void copySubstringFromMatch(char* destination, char* source, char* strToMatch) {
 	char* firstOccurence = strstr(source, strToMatch);
@@ -994,4 +1044,30 @@ void copySubstringFromMatch(char* destination, char* source, char* strToMatch) {
 	strncpy(destination, source+startPos, startPos+substringLength);
 
 	return;
+}
+
+// Following function extracts characters present in `src`
+// between `m` and `n` (excluding `n`)
+// https://www.techiedelight.com/implement-substr-function-c/#:~:text=The%20substr()%20function%20returns,string%20between%20two%20given%20indices.&text=It%20returns%20the%20substring%20of,ending%20at%20position%20n%2D1%20.
+char* substr(const char *src, int m, int n)
+{
+    // get the length of the destination string
+    int len = n - m;
+
+    // allocate (len + 1) chars for destination (+1 for extra null character)
+    char *dest = (char*)malloc(sizeof(char) * (len + 1));
+
+    // extracts characters between m'th and n'th index from source string
+    // and copy them into the destination string
+    for (int i = m; i < n && (*(src + i) != '\0'); i++)
+    {
+        *dest = *(src + i);
+        dest++;
+    }
+
+    // null-terminate the destination string
+    *dest = '\0';
+
+    // return the destination string
+    return dest - len;
 }
