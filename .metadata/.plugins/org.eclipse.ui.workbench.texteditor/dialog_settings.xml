@@ -1,13 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <section name="Workbench">
 	<section name="org.eclipse.ui.texteditor.FindReplaceDialog">
-		<item key="selection" value="AlarmBEventCallback"/>
+		<item key="selection" value="BEGIN 2"/>
 		<item key="wrap" value="true"/>
 		<item key="casesensitive" value="false"/>
 		<item key="wholeword" value="false"/>
 		<item key="incremental" value="false"/>
 		<item key="isRegEx" value="false"/>
 		<list key="findhistory">
+			<item value="BEGIN 2"/>
+			<item value="code 2"/>
+			<item value="DMA"/>
+			<item value="dma"/>
+			<item value="ina219_calibrationValue"/>
+			<item value="in219_ca"/>
+			<item value="in219ca"/>
+			<item value="in219 ca"/>
 			<item value="AlarmBEventCallback"/>
 			<item value="HAL_RTCEx_AlarmBEventCallback"/>
 			<item value="alarmBeventcallback"/>
@@ -15,14 +23,6 @@
 			<item value="Alarm A call"/>
 			<item value="Alarm B call"/>
 			<item value="Alarm B"/>
-			<item value="Alarm B callback"/>
-			<item value="Alarm A callback"/>
-			<item value="ADC1"/>
-			<item value="RTC_WeekDay_Definitions"/>
-			<item value="SD_SPI_HANDLE"/>
-			<item value="HAL_SPI_Init"/>
-			<item value="HAL_SPI"/>
-			<item value="note that"/>
 		</list>
 		<list key="replacehistory">
 			<item value="HTTP_POST_LENGTH"/>

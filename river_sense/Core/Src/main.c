@@ -25,6 +25,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <sim7070g.h>
+#include "INA219.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -45,6 +46,8 @@
 ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
 
+I2C_HandleTypeDef hi2c1;
+
 RTC_HandleTypeDef hrtc;
 
 SPI_HandleTypeDef hspi1;
@@ -54,6 +57,19 @@ TIM_HandleTypeDef htim2;
 UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
+//INA219_t ina219;
+//uint16_t vbus, vshunt, current = 0;
+HAL_StatusTypeDef status;
+//uint8_t buf[5] = {0};
+extern int adrs_219;
+float ina_curr = 0;
+float ina_vol = 0;
+float ina_pwr = 0;
+float ina_shunt = 0;
+uint8_t cnt = 0;
+uint8_t channel=0;
+
+
 
 // External variables begin
 extern char ATcommand[80];
@@ -102,7 +118,10 @@ char currentTime[20] = {0};
 // -- ADC Variables --- //
 volatile uint16_t adcResultsDMA[4];
 const int adcChannelCount = sizeof(adcResultsDMA) / sizeof(adcResultsDMA[0]);
+uint32_t TDS_digital[10] = {0};
+uint8_t TDS_digital_index = 0;
 float TDS_value = 0.0;
+
 
 
 
@@ -117,6 +136,7 @@ static void MX_TIM2_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_RTC_Init(void);
 static void MX_ADC1_Init(void);
+static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
 void power_on_blocking(void);
 void power_off_blocking(void);
@@ -134,7 +154,15 @@ void set_alarm_B(uint32_t secondsOffset);
 // ADC Callback
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
 	// TODO: unpack ADC data
-	TDS_value = adcResultsDMA[0];
+	TDS_digital[TDS_digital_index++] = adcResultsDMA[0];
+	if (TDS_digital_index == 10) {
+		uint32_t tempSum = 0;
+		for (int i = 0; i < 10; ++i) {
+			tempSum += TDS_digital[i];
+		}
+		TDS_value = tempSum/10;
+		TDS_digital_index = 0;
+	}
 
 }
 
@@ -174,6 +202,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 		}
 		SIM_Handler();
 	}
+
+	HAL_ADC_Start_DMA(&hadc1, (uint32_t*) adcResultsDMA, 4); // Start DMA for ADC
 }
 
 
@@ -192,7 +222,7 @@ void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *hrtc) {
 	// TODO: write ADC data to SD card
 
 
-	HAL_ADC_Start_DMA(&hadc1, (uint32_t*) adcResultsDMA, 4); // Start DMA for ADC
+
 	set_alarm_A(alarmA_SecondsOffset);
 	return;
 }
@@ -245,7 +275,31 @@ int main(void)
   MX_FATFS_Init();
   MX_RTC_Init();
   MX_ADC1_Init();
+  MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
+//  status = HAL_I2C_GetState(&hi2c1);
+//  status = HAL_I2C_IsDeviceReady(&hi2c1, 0x40, 5, 3000);
+
+//
+//  adrs_219 = 0x40;
+////  setCalibration_32V_2A();
+//  setCalibration_32V_2A();
+//  ina_curr = getCurrent_mA();
+//  ina_vol = getBusVoltage_V();
+//  ina_shunt = getShuntVoltage_mV();
+//  ina_pwr = getPower_mW();
+
+//  for (int var = 0; var < 100; ++var) {
+//	adrs_219 = 0x40;
+//	ina_curr = getCurrent_mA();
+//	ina_vol = getBusVoltage_V();
+//	ina_shunt = getShuntVoltage_mV();
+//	channel = 1;
+//}
+
+
+
+
 
 
 //  set_time();
@@ -512,6 +566,54 @@ static void MX_ADC1_Init(void)
   /* USER CODE BEGIN ADC1_Init 2 */
 
   /* USER CODE END ADC1_Init 2 */
+
+}
+
+/**
+  * @brief I2C1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_I2C1_Init(void)
+{
+
+  /* USER CODE BEGIN I2C1_Init 0 */
+
+  /* USER CODE END I2C1_Init 0 */
+
+  /* USER CODE BEGIN I2C1_Init 1 */
+
+  /* USER CODE END I2C1_Init 1 */
+  hi2c1.Instance = I2C1;
+  hi2c1.Init.Timing = 0x00707CBB;
+  hi2c1.Init.OwnAddress1 = 0;
+  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c1.Init.OwnAddress2 = 0;
+  hi2c1.Init.OwnAddress2Masks = I2C_OA2_NOMASK;
+  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Analogue filter
+  */
+  if (HAL_I2CEx_ConfigAnalogFilter(&hi2c1, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Digital filter
+  */
+  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN I2C1_Init 2 */
+
+  /* USER CODE END I2C1_Init 2 */
 
 }
 
